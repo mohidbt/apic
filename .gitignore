@@ -27,10 +27,19 @@ Thumbs.db
 
 #IDE
 .cursor
+bs/
 
 # Generated markdown outputs (except documentation)
-*.md
+# Allow documentation files but ignore converted outputs
+*-converted.md
+*-output.md
+test-*.md
+
+# Keep documentation
 !README.md
 !QUICKSTART.md
+!SETUP.md
 !EXAMPLES.md
+!INTEGRATION_COMPLETE.md
+!QUICK_REFERENCE.md
 !APIs.guru-swagger.md
