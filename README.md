@@ -1,4 +1,4 @@
-# OpenAPI to LLM-Ready Markdown Converter
+# APIC - Epic OpenAPI Files to LLM-Ready Markdown Converter
 
 Convert OpenAPI YAML/JSON specifications into structured, LLM-friendly markdown format optimized for AI coding assistants.
 
