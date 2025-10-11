@@ -25,6 +25,9 @@ Thumbs.db
 # Environment
 .env
 
+#IDE
+.cursor
+
 # Generated markdown outputs (except documentation)
 *.md
 !README.md
