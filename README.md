@@ -7,22 +7,14 @@
 ## ✨ Features
 
 ### Converter Features
-✅ **Dereferences `$ref` schemas** — Inline references for readability  
-✅ **Surfaces authentication** — Security schemes pulled into each endpoint  
-✅ **Base URLs highlighted** — Server information prominently displayed  
-✅ **Runnable examples** — Auto-generated curl commands with placeholders  
-✅ **Strict separators** — Gitingest-style delimiters prevent boundary confusion  
-✅ **Tag grouping** — Organized by tags, alphabetically sorted  
-✅ **Type normalization** — Clean type display (string (uuid), array<User>, etc.)  
-✅ **Token-aware** — Designed to keep endpoint chunks under 2-4K tokens  
-
-### Web Application Features
-🌐 **Modern Web Interface** — Beautiful, responsive UI with drag-and-drop upload  
-⚡ **Real-time Conversion** — FastAPI backend with instant processing  
-📥 **Automatic Downloads** — Converted markdown downloads automatically  
-🎨 **Dark Mode Support** — Easy on the eyes  
-🔔 **User Feedback** — Toast notifications for all actions  
-📱 **Responsive Design** — Works on desktop, tablet, and mobile  
+**Dereferences `$ref` schemas** — Inline references for readability  
+**Surfaces authentication** — Security schemes pulled into each endpoint  
+**Base URLs highlighted** — Server information prominently displayed  
+**Runnable examples** — Auto-generated curl commands with placeholders  
+**Strict separators** — Delimiters prevent boundary confusion  (Inspired by GitIngest, see below)
+**Tag grouping** — Organized by tags, alphabetically sorted  
+**Type normalization** — Clean type display (string (uuid), array<User>, etc.)  
+**Token-aware** — Designed to keep endpoint chunks under 2-4K tokens  
 
 ## 🚀 Quick Start
 

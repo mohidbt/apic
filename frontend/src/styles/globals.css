@@ -2,58 +2,114 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
-  }
+:root {
+  --background: 0 0% 87.8431%;
+  --foreground: 120 100% 31.3725%;
+  --card: 0 0% 81.5686%;
+  --card-foreground: 120 100% 31.3725%;
+  --popover: 0 0% 81.5686%;
+  --popover-foreground: 120 100% 31.3725%;
+  --primary: 120 100% 25.0980%;
+  --primary-foreground: 0 0% 87.8431%;
+  --secondary: 0 0% 62.7451%;
+  --secondary-foreground: 0 0% 0%;
+  --muted: 0 0% 75.2941%;
+  --muted-foreground: 120 100% 21.9608%;
+  --accent: 0 0% 69.0196%;
+  --accent-foreground: 120 100% 28.2353%;
+  --destructive: 0 100% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 120 100% 31.3725%;
+  --input: 0 0% 94.1176%;
+  --ring: 120 100% 31.3725%;
+  --chart-1: 120 100% 31.3725%;
+  --chart-2: 120 100% 25.0980%;
+  --chart-3: 120 100% 18.8235%;
+  --chart-4: 120 100% 12.5490%;
+  --chart-5: 120 100% 6.2745%;
+  --sidebar: 0 0% 75.2941%;
+  --sidebar-foreground: 120 100% 31.3725%;
+  --sidebar-primary: 120 100% 25.0980%;
+  --sidebar-primary-foreground: 0 0% 87.8431%;
+  --sidebar-accent: 0 0% 69.0196%;
+  --sidebar-accent-foreground: 120 100% 28.2353%;
+  --sidebar-border: 120 100% 31.3725%;
+  --sidebar-ring: 120 100% 31.3725%;
+  --font-sans: monospace;
+  --font-serif: monospace;
+  --font-mono: monospace;
+  --radius: 0rem;
+  --shadow-x: 0px;
+  --shadow-y: 0px;
+  --shadow-blur: 0px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.3;
+  --shadow-color: #00A000;
+  --shadow-2xs: 0px 0px 0px 0px hsl(120 100% 31.3725% / 0.15);
+  --shadow-xs: 0px 0px 0px 0px hsl(120 100% 31.3725% / 0.15);
+  --shadow-sm: 0px 0px 0px 0px hsl(120 100% 31.3725% / 0.30), 0px 1px 2px -1px hsl(120 100% 31.3725% / 0.30);
+  --shadow: 0px 0px 0px 0px hsl(120 100% 31.3725% / 0.30), 0px 1px 2px -1px hsl(120 100% 31.3725% / 0.30);
+  --shadow-md: 0px 0px 0px 0px hsl(120 100% 31.3725% / 0.30), 0px 2px 4px -1px hsl(120 100% 31.3725% / 0.30);
+  --shadow-lg: 0px 0px 0px 0px hsl(120 100% 31.3725% / 0.30), 0px 4px 6px -1px hsl(120 100% 31.3725% / 0.30);
+  --shadow-xl: 0px 0px 0px 0px hsl(120 100% 31.3725% / 0.30), 0px 8px 10px -1px hsl(120 100% 31.3725% / 0.30);
+  --shadow-2xl: 0px 0px 0px 0px hsl(120 100% 31.3725% / 0.75);
+  --tracking-normal: 0.05em;
+  --spacing: 0.25rem;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+.dark {
+  --background: 0 0% 0%;
+  --foreground: 120 100% 56.6667%;
+  --card: 0 0% 6.2745%;
+  --card-foreground: 120 100% 56.6667%;
+  --popover: 0 0% 6.2745%;
+  --popover-foreground: 120 100% 56.6667%;
+  --primary: 120 100% 37.6471%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 18.8235%;
+  --secondary-foreground: 120 100% 56.6667%;
+  --muted: 0 0% 12.5490%;
+  --muted-foreground: 120 100% 43.9216%;
+  --accent: 0 0% 10.1961%;
+  --accent-foreground: 120 100% 56.6667%;
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 120 100% 56.6667%;
+  --input: 0 0% 3.9216%;
+  --ring: 120 100% 56.6667%;
+  --chart-1: 120 100% 56.6667%;
+  --chart-2: 120 100% 43.9216%;
+  --chart-3: 120 100% 34.5098%;
+  --chart-4: 120 100% 25.0980%;
+  --chart-5: 120 100% 15.6863%;
+  --sidebar: 0 0% 1.9608%;
+  --sidebar-foreground: 120 100% 56.6667%;
+  --sidebar-primary: 120 100% 37.6471%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-accent: 0 0% 10.1961%;
+  --sidebar-accent-foreground: 120 100% 56.6667%;
+  --sidebar-border: 120 100% 56.6667%;
+  --sidebar-ring: 120 100% 56.6667%;
+  --font-sans: monospace;
+  --font-serif: monospace;
+  --font-mono: monospace;
+  --radius: 0rem;
+  --shadow-x: 0px;
+  --shadow-y: 0px;
+  --shadow-blur: 0px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.5;
+  --shadow-color: #22FF22;
+  --shadow-2xs: 0px 0px 0px 0px hsl(120 100% 56.6667% / 0.25);
+  --shadow-xs: 0px 0px 0px 0px hsl(120 100% 56.6667% / 0.25);
+  --shadow-sm: 0px 0px 0px 0px hsl(120 100% 56.6667% / 0.50), 0px 1px 2px -1px hsl(120 100% 56.6667% / 0.50);
+  --shadow: 0px 0px 0px 0px hsl(120 100% 56.6667% / 0.50), 0px 1px 2px -1px hsl(120 100% 56.6667% / 0.50);
+  --shadow-md: 0px 0px 0px 0px hsl(120 100% 56.6667% / 0.50), 0px 2px 4px -1px hsl(120 100% 56.6667% / 0.50);
+  --shadow-lg: 0px 0px 0px 0px hsl(120 100% 56.6667% / 0.50), 0px 4px 6px -1px hsl(120 100% 56.6667% / 0.50);
+  --shadow-xl: 0px 0px 0px 0px hsl(120 100% 56.6667% / 0.50), 0px 8px 10px -1px hsl(120 100% 56.6667% / 0.50);
+  --shadow-2xl: 0px 0px 0px 0px hsl(120 100% 56.6667% / 1.25);
+}
+
+body {
+  letter-spacing: var(--tracking-normal);
 }
