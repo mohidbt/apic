@@ -7,8 +7,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 COPY frontend/bun.lock* ./
 
-# Install frontend dependencies (remove --only=production as it causes issues with npm ci)
-RUN npm ci
+# Install frontend dependencies using npm install (npm ci has authentication issues)
+RUN npm install --legacy-peer-deps
 
 # Copy frontend source
 COPY frontend ./
