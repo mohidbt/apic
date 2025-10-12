@@ -1,227 +1,178 @@
 # Quick Start Guide
 
-Get up and running in 30 seconds.
+Get APIIngest running in 2 minutes!
 
-## TL;DR
-
-```bash
-# Convert your OpenAPI spec
-python3 main.py your-api-spec.yaml
-
-# Output: your-api-spec.md (ready for LLM consumption)
-```
-
-## Common Commands
+## 🚀 Super Quick Start
 
 ```bash
-# Basic conversion (auto-names output)
-python3 main.py api.yaml
+# Terminal 1 - Backend
+./dev-backend.sh
 
-# Custom output name
-python3 main.py api.yaml my-api-reference.md
-
-# Works with JSON too
-python3 main.py swagger.json
-
-# Make executable (one-time setup)
-chmod +x main.py
-./main.py api.yaml
+# Terminal 2 - Frontend  
+./dev-frontend.sh
 ```
 
-## What You Get
+Open http://localhost:3000 and start converting! 🎉
 
-Input: `api.yaml` (your OpenAPI spec)  
-Output: `api.md` (LLM-optimized markdown)
+## 📋 Prerequisites
 
-The output includes:
-- ✅ Header with base URLs and auth schemes
-- ✅ Table of contents grouped by tag
-- ✅ Detailed endpoint blocks with strict separators
-- ✅ Dereferenced schemas (no `$ref` chasing)
-- ✅ Runnable curl examples for every endpoint
-- ✅ Components appendix for shared schemas
+- **Python 3.8+** - Check: `python3 --version`
+- **Node.js 20+** - Check: `node --version`
+- **npm** - Check: `npm --version`
 
-## Use Cases
+## 🔧 Manual Setup
 
-### 1. AI Coding Assistant Context
+If the helper scripts don't work on your system:
 
-**Cursor, GitHub Copilot, Claude Code, etc.**
+### Backend
 
 ```bash
-# Convert your API spec
-python3 main.py company-api.yaml
+cd backend
 
-# Then in your AI chat:
-# "Using the endpoints in company-api.md, write a client 
-# that fetches all users and creates a new one"
+# Create virtual environment (optional but recommended)
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start server
+python main.py
 ```
 
-The AI will have complete context including types, auth, and examples.
+Server runs on http://localhost:8000
+- API docs: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
 
-### 2. RAG System Ingestion
-
-**LlamaIndex, LangChain, etc.**
+### Frontend
 
 ```bash
-# Convert API to markdown
-python3 main.py large-api.yaml api-reference.md
+cd frontend
 
-# Chunk the output by endpoint (using the === separators)
-# Feed chunks into your vector database
+# Install dependencies
+npm install
+
+# Create environment file
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+
+# Start dev server
+npm run dev
 ```
 
-Each endpoint block is self-contained and token-efficient.
+Frontend runs on http://localhost:3000
 
-### 3. Prompt Engineering
+## 🎯 First Conversion
 
-**Few-shot examples, function calling schemas**
+### Using the Web UI
+
+1. Open http://localhost:3000
+2. Drag & drop `examples/APIs.guru-swagger.yaml`
+3. Click "Convert to Markdown"
+4. File downloads automatically!
+
+### Using Command Line
 
 ```bash
-python3 main.py api.yaml
-
-# Extract specific endpoints for prompt examples
-# The strict format makes parsing easy
+cd backend
+python transformation.py ../examples/APIs.guru-swagger.yaml
+# Output: APIs.guru-swagger.md
 ```
 
-### 4. Documentation Generation
-
-**For AI-assisted docs writing**
+### Using the API
 
 ```bash
-python3 main.py api.yaml api-ref.md
-
-# Feed to AI: "Convert this API reference into user-friendly 
-# documentation with code examples in Python, JavaScript, and Go"
+curl -X POST http://localhost:8000/convert \
+  -F "file=@examples/APIs.guru-swagger.yaml" \
+  -o output.md
 ```
 
-## File Locations
-
-After running the script:
-
-```
-your-project/
-├── main.py              # The converter script
-├── requirements.txt     # Dependencies (just PyYAML)
-├── api.yaml            # Your OpenAPI spec (input)
-└── api.md              # Generated markdown (output)
-```
-
-## Troubleshooting
-
-### "command not found: python"
-
-Use `python3` instead:
-```bash
-python3 main.py api.yaml
-```
-
-### "No module named 'yaml'"
-
-Install dependencies:
-```bash
-pip3 install -r requirements.txt
-```
-
-### "File not found"
-
-Make sure you're in the right directory:
-```bash
-cd /path/to/your/project
-python3 main.py api.yaml
-```
-
-### Large output file
-
-This is normal for big APIs. The format is token-efficient:
-- Each endpoint: ~200-500 tokens
-- 50 endpoints: ~25K tokens (fits in most LLM contexts)
-
-## Advanced Usage
-
-### Custom Output Location
+## 🐳 Docker (Alternative)
 
 ```bash
-python3 main.py api.yaml docs/api-reference.md
+# Start both services
+docker-compose up
+
+# Access:
+# - Frontend: http://localhost:3000
+# - Backend: http://localhost:8000
 ```
 
-### Batch Processing
+## 🌐 Deploy to Koyeb
+
+1. Push code to GitHub
+2. Connect repository to Koyeb
+3. Create two services:
+   - **Backend**: Working dir `backend/`, Port 8000
+   - **Frontend**: Working dir `frontend/`, Port 3000
+4. Set environment variables (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
+
+## 📚 Next Steps
+
+- **[README.md](README.md)** - Full project overview
+- **[docs/SETUP.md](docs/SETUP.md)** - Detailed setup guide
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Production deployment
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute
+
+## 🆘 Troubleshooting
+
+### Port Already in Use
 
 ```bash
-# Convert multiple specs
-for file in specs/*.yaml; do
-  python3 main.py "$file"
-done
+# Kill process on port 8000 (backend)
+lsof -ti:8000 | xargs kill -9
+
+# Kill process on port 3000 (frontend)
+lsof -ti:3000 | xargs kill -9
 ```
 
-### Integration with Scripts
+### Module Not Found (Python)
 
-```python
-from main import OpenAPIToMarkdown
-
-converter = OpenAPIToMarkdown('api.yaml', 'output.md')
-markdown = converter.convert()
-converter.save(markdown)
-
-# Or just get the markdown string
-print(markdown[:500])  # Preview first 500 chars
+```bash
+cd backend
+pip install -r requirements.txt
 ```
 
-## Example Output Preview
+### Module Not Found (Node)
 
-Your converted markdown will look like this:
-
-```markdown
-# Your API Name
-**Version:** 1.0.0
-
-## Base URLs
-  - https://api.example.com
-
-## Authentication
-  - bearerAuth: HTTP BEARER
-
-## Endpoints by Tag
-
-### Users
-- **GET** `/users` — List all users
-- **POST** `/users` — Create new user
-
-## Endpoint Details
-
-================================================================================
-ENDPOINT: [GET] /users
-TAGS: Users
-SUMMARY: List all users
-AUTH: BEARER token
-
-REQUEST
-  Query params:
-  - limit (integer, optional)
-
-RESPONSES
-  - 200 (application/json): Success
-    array<User>
-
-EXAMPLE (curl)
-curl -X GET \
-  "https://api.example.com/users?limit=20" \
-  -H "Authorization: Bearer $TOKEN"
-================================================================================
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
 ```
 
-## Next Steps
+### CORS Errors
 
-1. **Convert your API**: `python3 main.py your-spec.yaml`
-2. **Test with LLM**: Feed the output to your AI coding assistant
-3. **Iterate**: Adjust the script if needed (see `main.py`)
+Make sure:
+1. Backend is running on port 8000
+2. Frontend `.env.local` has `NEXT_PUBLIC_API_URL=http://localhost:8000`
+3. No trailing slashes in URLs
 
-## Questions?
+### Backend Won't Start
 
-- 📖 See `EXAMPLES.md` for detailed before/after comparisons
-- 📚 See `README.md` for full documentation
-- 🔧 Edit `main.py` to customize output format
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+python main.py
+```
+
+## 💡 Tips
+
+- Use `./dev-backend.sh` and `./dev-frontend.sh` for easiest setup
+- Check example files in `examples/` directory
+- View API docs at http://localhost:8000/docs while backend is running
+- Frontend hot-reloads on code changes
+- Backend auto-reloads on code changes
+
+## 📞 Need Help?
+
+- Check [docs/](docs/) for detailed documentation
+- See [examples/](examples/) for sample files
+- Open an issue on GitHub
 
 ---
 
-**Pro tip**: Keep both the original OpenAPI spec and the generated markdown in your repo. The markdown is for AI consumption, the spec is for tooling (Swagger UI, code generators, etc.).
+**Happy converting! 🚀**
 

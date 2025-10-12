@@ -11,9 +11,25 @@ build/
 dist/
 *.egg-info/
 
+# Node.js / Frontend
+node_modules/
+.next/
+out/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
 # IDEs
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
@@ -21,25 +37,30 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+*.bak
 
-# Environment
-.env
+# Build outputs
+dist/
+build/
 
-#IDE
-.cursor
-bs/
+# Test coverage
+coverage/
+.nyc_output/
 
 # Generated markdown outputs (except documentation)
-# Allow documentation files but ignore converted outputs
 *-converted.md
 *-output.md
-test-*.md
+test-output-*.md
 
-# Keep documentation
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Archive (optional - remove this line if you want to commit archived files)
+.archive/
+
+# Keep specific documentation files
 !README.md
-!QUICKSTART.md
-!SETUP.md
-!EXAMPLES.md
-!INTEGRATION_COMPLETE.md
-!QUICK_REFERENCE.md
-!APIs.guru-swagger.md
+!**/README.md
+!examples/*.md

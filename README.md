@@ -2,7 +2,9 @@
 
 🚀 **Full-stack web application** that converts OpenAPI YAML/JSON specifications into structured, LLM-friendly markdown format optimized for AI coding assistants.
 
-## Features
+[![Deploy to Koyeb](https://img.shields.io/badge/Deploy%20to-Koyeb-blue)](https://www.koyeb.com/)
+
+## ✨ Features
 
 ### Converter Features
 ✅ **Dereferences `$ref` schemas** — Inline references for readability  
@@ -22,89 +24,82 @@
 🔔 **User Feedback** — Toast notifications for all actions  
 📱 **Responsive Design** — Works on desktop, tablet, and mobile  
 
-## Quick Start
+## 🚀 Quick Start
 
-### Option 1: Using Helper Scripts (Recommended)
+### Local Development
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/apiingest.git
+cd apiingest
+
 # Terminal 1 - Start Backend
-./start-backend.sh
+cd backend
+pip install -r requirements.txt
+python main.py
 
 # Terminal 2 - Start Frontend
-./start-frontend.sh
+cd frontend
+npm install
+npm run dev
 ```
 
 Then open http://localhost:3000 in your browser!
 
-### Option 2: Manual Setup
+### Using the Converter
 
-See [SETUP.md](SETUP.md) for detailed installation and configuration instructions.
+1. **Web Interface** (Recommended)
+   - Open http://localhost:3000
+   - Drag and drop your OpenAPI YAML/JSON file
+   - Click "Convert to Markdown"
+   - Download starts automatically!
 
-## Installation
+2. **Command Line**
+   ```bash
+   cd backend
+   python transformation.py ../examples/APIs.guru-swagger.yaml
+   ```
 
-### Backend Setup
+3. **API Endpoint**
+   ```bash
+   curl -X POST http://localhost:8000/convert \
+     -F "file=@openapi-spec.yaml" \
+     -o output.md
+   ```
 
-```bash
-# Install Python dependencies
-pip3 install -r requirements.txt
+## 📁 Project Structure
 
-# Start the FastAPI server
-python3 main.py
-# Server runs on http://localhost:8000
-# API docs at http://localhost:8000/docs
+```
+apiingest/
+├── backend/               # FastAPI server
+│   ├── main.py           # API server with file upload
+│   ├── transformation.py # Core OpenAPI→Markdown converter
+│   ├── requirements.txt  # Python dependencies
+│   └── README.md         # Backend documentation
+├── frontend/             # Next.js web application
+│   ├── src/              # React components and pages
+│   ├── public/           # Static assets
+│   ├── package.json      # Node dependencies
+│   └── .env.example      # Environment variables template
+├── examples/             # Example OpenAPI specifications
+│   ├── APIs.guru-swagger.yaml
+│   ├── APIs.guru-swagger.json
+│   └── README.md
+├── docs/                 # Documentation
+│   ├── SETUP.md         # Detailed setup guide
+│   ├── DEPLOYMENT.md    # Koyeb deployment instructions
+│   └── QUICK_REFERENCE.md
+├── .koyeb/              # Deployment configuration
+│   └── config.yaml
+└── README.md            # This file
 ```
 
-### Frontend Setup
-
-```bash
-# Navigate to frontend
-cd frontend/nextjs-starter-template
-
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-# Frontend runs on http://localhost:3000
-```
-
-## Usage
-
-### Web Interface (Recommended)
-
-1. Open http://localhost:3000
-2. Drag and drop your OpenAPI YAML/JSON file or click to browse
-3. Click "Convert to Markdown"
-4. Your converted file downloads automatically!
-
-### Command Line
-
-```bash
-# Convert OpenAPI file to markdown (auto-names output)
-python3 transformation.py openapi-spec.yaml
-
-# Specify custom output path
-python3 transformation.py openapi-spec.yaml api-reference.md
-
-# Works with JSON too
-python3 transformation.py swagger.json api-docs.md
-```
-
-### API Endpoint
-
-```bash
-# Using curl
-curl -X POST http://localhost:8000/convert \
-  -F "file=@example/APIs.guru-swagger.yaml" \
-  -o output.md
-```
-
-## Output Format
+## 📖 Output Format
 
 The generated markdown follows a strict, LLM-optimized structure:
 
 ### Header Section
-```
+```markdown
 # API Title
 **Version:** 1.0.0
 
@@ -119,19 +114,9 @@ Brief description...
   - apiKey: API Key (header: X-API-Key)
 ```
 
-### Table of Contents
-```
-## Endpoints by Tag
-
-### Users
-- **GET** `/users` — List all users
-- **GET** `/users/{id}` — Get user by ID
-- **POST** `/users` — Create new user
-```
-
 ### Endpoint Blocks
 
-Each endpoint uses strict delimiters (inspired by Gitingest's file separation):
+Each endpoint uses strict delimiters (inspired by Gitingest):
 
 ```
 ================================================================================
@@ -154,7 +139,6 @@ RESPONSES
     - id: string (uuid, required)
     - name: string (required)
     - email: string (email, required)
-    - created_at: string (date-time, required)
   - 404: User not found
 
 EXAMPLE (curl)
@@ -164,37 +148,16 @@ curl -X GET \
 ================================================================================
 ```
 
-### Components Appendix
-
-Shared schemas are collected at the end:
-
-```
-================================================================================
-## COMPONENTS APPENDIX
-================================================================================
-
-Shared schemas referenced throughout the API:
-
-### User
-Type: object
-Description: User account model
-
-- id: string (uuid, required)
-- name: string (required)
-- email: string (email, required)
-- role: string (enum: admin, user, guest) (required)
-```
-
-## Why This Format?
+## 🎯 Why This Format?
 
 ### LLM Benefits
 
-1. **Strict Delimiters** — `=` bars prevent the AI from confusing endpoint boundaries
+1. **Strict Delimiters** — `=` bars prevent AI from confusing endpoint boundaries
 2. **Dereferenced Schemas** — No need to chase `$ref` pointers during code generation
-3. **Inline Auth** — Security requirements visible per-endpoint, not hidden in components
+3. **Inline Auth** — Security requirements visible per-endpoint
 4. **Runnable Examples** — Copy-paste curl commands with placeholder variables
 5. **Normalized Types** — Consistent type display helps pattern recognition
-6. **Tag Grouping** — Logical organization mimics how developers think
+6. **Tag Grouping** — Logical organization mimics developer thinking
 7. **Token-Optimized** — Chunks designed to fit in context windows
 
 ### Inspired by Gitingest
@@ -205,133 +168,110 @@ This format borrows from [Gitingest](https://gitingest.com/)'s approach:
 - Stable, deterministic ordering
 - Noise filtering for clarity
 
-## Advanced Features
+## 🌐 Deployment
 
-### Schema Dereferencing
+### Deploy to Koyeb
 
-The script automatically resolves `$ref` pointers up to 3 levels deep:
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete Koyeb deployment instructions.
 
-```yaml
-# Before (OpenAPI)
-schema:
-  $ref: "#/components/schemas/User"
+**Quick Overview:**
+1. Deploy backend service (FastAPI) from `backend/` directory
+2. Deploy frontend service (Next.js) from `frontend/` directory
+3. Set environment variables for both services
+4. Update CORS settings with deployed URLs
 
-# After (Markdown)
-- id: string (uuid, required)
-- name: string (required)
-- email: string (email, required)
+**Environment Variables:**
+
+Backend:
+```bash
+ALLOWED_ORIGINS=https://your-frontend.koyeb.app
+PORT=8000
 ```
 
-### Type Normalization
-
-Types are enhanced with format and constraint info:
-
-- `string` → `string`
-- `string` + `format: uuid` → `string (uuid)`
-- `string` + `enum: [a, b, c]` → `string (enum: a, b, c)`
-- `array` + `items: User` → `array<User>`
-- `object` + `properties: {...}` → `object (5 fields)`
-
-### Example Generation
-
-Curl examples use:
-1. Spec's `example` values when available
-2. Smart placeholders otherwise (123 for IDs, "example" for strings)
-3. Environment variable style for auth (`$TOKEN`, `$API_KEY`)
-
-### Security Schemes
-
-All security types are supported:
-- **API Key** — Header/query/cookie-based keys
-- **HTTP Auth** — Basic, Bearer, etc.
-- **OAuth2** — With flow types and scopes
-- **OpenID Connect**
-
-## Token Management
-
-The format is designed to keep individual endpoint chunks under 2-4K tokens:
-- Long descriptions truncated to 200 chars
-- Schema depth limited to 3 levels
-- Large enums show first 5 values + "..."
-- Components moved to appendix
-
-## Architecture
-
-### Backend (FastAPI + Python)
-- **`main.py`** — FastAPI server with file upload endpoint
-- **`transformation.py`** — Core OpenAPI to Markdown converter
-- **Port:** 8000
-- **Features:** CORS, file validation, streaming responses, automatic cleanup
-
-### Frontend (Next.js 14 + React + TypeScript)
-- **Location:** `frontend/nextjs-starter-template/`
-- **Port:** 3000
-- **Features:** Drag-and-drop upload, real-time validation, loading states, toast notifications
-- **UI:** shadcn/ui components with Tailwind CSS
-
-### Flow
-```
-User uploads file → Frontend validates → POST to /convert → 
-Backend processes with transformation.py → Markdown returned → 
-Automatic download
+Frontend:
+```bash
+NEXT_PUBLIC_API_URL=https://your-backend.koyeb.app
+NODE_ENV=production
 ```
 
-## Project Structure
+## 🛠️ Technology Stack
 
-```
-.
-├── main.py                          # FastAPI backend server
-├── transformation.py                # OpenAPI to Markdown converter
-├── requirements.txt                 # Python dependencies
-├── start-backend.sh                 # Helper script for backend
-├── start-frontend.sh                # Helper script for frontend
-├── README.md                        # This file
-├── SETUP.md                         # Detailed setup guide
-├── example/                         # Example OpenAPI specs
-│   ├── APIs.guru-swagger.json
-│   ├── APIs.guru-swagger.yaml
-│   └── ...
-└── frontend/
-    └── nextjs-starter-template/
-        ├── src/
-        │   ├── app/[locale]/
-        │   │   ├── page.tsx         # Main upload page
-        │   │   └── layout.tsx       # Root layout with toaster
-        │   ├── components/ui/       # shadcn/ui components
-        │   └── ...
-        ├── package.json
-        └── ...
-```
+### Backend
+- **FastAPI** — Modern Python web framework
+- **uvicorn** — ASGI server
+- **PyYAML** — YAML parsing
+- **Python 3.8+**
 
-## Example Output
+### Frontend
+- **Next.js 15** — React framework
+- **TypeScript** — Type safety
+- **Tailwind CSS** — Styling
+- **shadcn/ui** — UI components
+- **Sonner** — Toast notifications
 
-Run the converter on the included example:
+## 📚 Documentation
+
+- **[SETUP.md](docs/SETUP.md)** — Detailed installation and configuration
+- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** — Koyeb deployment guide
+- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** — Command reference
+- **[Backend README](backend/README.md)** — API documentation
+- **[Examples](examples/README.md)** — Example specifications
+
+## 🧪 Testing
+
+Try it with the included examples:
 
 ```bash
-python3 main.py APIs.guru-swagger.json
+# Backend directory
+cd backend
+
+# Convert example spec
+python transformation.py ../examples/APIs.guru-swagger.yaml
+
+# Start API server for testing
+python main.py
 ```
 
-This generates `APIs.guru-swagger.md` with:
-- 📄 ~100 lines of header/TOC
-- 🎯 Endpoint blocks with strict separators
-- 📚 Components appendix with shared schemas
-- ✨ Runnable curl examples for every endpoint
+## 🤝 Contributing
 
-## License
+Contributions welcome! This project prioritizes LLM readability over human aesthetics.
 
-MIT — Feel free to use, modify, and distribute.
-
-## Contributing
-
-Contributions welcome! This script prioritizes LLM readability over human aesthetics.
-
-Key principles:
+**Key principles:**
 1. **Strict structure** — Consistent delimiters and ordering
 2. **Inline critical info** — Auth, types, examples per endpoint
 3. **Token efficiency** — Truncate where necessary
 4. **Deterministic output** — Same input = same output
 
-## Related Projects
+## 📝 License
+
+MIT — Feel free to use, modify, and distribute.
+
+## 🔗 Related Projects
 
 - [Gitingest](https://gitingest.com/) — LLM-optimized code repository digests
 
+## 💡 Use Cases
+
+- **AI Coding Assistants** — Feed API docs to Claude, GPT, etc.
+- **API Documentation** — Generate readable docs from OpenAPI specs
+- **Developer Onboarding** — Clear, structured API references
+- **RAG Systems** — Token-optimized chunks for retrieval
+- **Code Generation** — Help AI understand your API structure
+
+## 🐛 Issues & Support
+
+Found a bug or have a question?
+- Open an issue on GitHub
+- Check existing [documentation](docs/)
+- Try with [example files](examples/)
+
+## 🎉 Acknowledgments
+
+Built with inspiration from:
+- Gitingest's LLM-friendly formatting approach
+- OpenAPI Specification community
+- Modern web development best practices
+
+---
+
+**Made with ❤️ for developers working with LLMs**
