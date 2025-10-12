@@ -5,10 +5,9 @@ WORKDIR /app/frontend
 
 # Copy frontend package files
 COPY frontend/package*.json ./
-COPY frontend/bun.lock* ./
 
-# Install frontend dependencies using npm install (npm ci has authentication issues)
-RUN npm install --legacy-peer-deps
+# Install frontend dependencies with legacy peer deps
+RUN npm ci --legacy-peer-deps
 
 # Copy frontend source
 COPY frontend ./
