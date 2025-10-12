@@ -19,7 +19,7 @@ export default function HomePage() {
     const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
     
     if (!validExtensions.includes(fileExtension)) {
-      toast.error('Invalid file type. Please upload a YAML or JSON file.')
+      toast.error('Invalid file type. Please upload a YAML, YML or JSON spec.')
       return false
     }
     return true

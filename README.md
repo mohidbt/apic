@@ -164,27 +164,37 @@ This format borrows from [Gitingest](https://gitingest.com/)'s approach:
 
 ### Deploy to Koyeb
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete Koyeb deployment instructions.
+**Two deployment options:**
+
+#### Option 1: Single Service (Recommended for Simple Deployments)
+Deploy backend + frontend together in one container.
+
+See **[KOYEB_SINGLE_SERVICE.md](KOYEB_SINGLE_SERVICE.md)** for detailed instructions.
+
+**Quick steps:**
+1. Use root-level `Dockerfile`
+2. Set environment variables (PORT, ALLOWED_ORIGINS, etc.)
+3. Deploy as one service
+4. Both services run together via supervisord
+
+**Environment Variables:**
+```bash
+PORT=8000
+ALLOWED_ORIGINS=https://{{ KOYEB_PUBLIC_DOMAIN }}/
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NODE_ENV=production
+```
+
+#### Option 2: Two Separate Services (Recommended for Production)
+Deploy backend and frontend as independent services.
+
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for complete instructions.
 
 **Quick Overview:**
 1. Deploy backend service (FastAPI) from `backend/` directory
 2. Deploy frontend service (Next.js) from `frontend/` directory
 3. Set environment variables for both services
 4. Update CORS settings with deployed URLs
-
-**Environment Variables:**
-
-Backend:
-```bash
-ALLOWED_ORIGINS=https://your-frontend.koyeb.app
-PORT=8000
-```
-
-Frontend:
-```bash
-NEXT_PUBLIC_API_URL=https://your-backend.koyeb.app
-NODE_ENV=production
-```
 
 ## 🛠️ Technology Stack
 
