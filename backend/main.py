@@ -5,13 +5,15 @@ Handles file uploads and returns converted markdown files
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import io
 import os
 import tempfile
 from pathlib import Path
 from transformation import OpenAPIToMarkdown
+import httpx
 
 app = FastAPI(
     title="OpenAPI to Markdown Converter API",
@@ -32,7 +34,7 @@ app.add_middleware(
 )
 
 
-@app.get("/")
+@app.get("/api")
 async def root():
     """Health check endpoint"""
     return {
@@ -40,6 +42,33 @@ async def root():
         "message": "OpenAPI to Markdown Converter API",
         "version": "1.0.0"
     }
+
+
+@app.get("/")
+async def frontend_root():
+    """Proxy to frontend on port 3000"""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get("http://localhost:3000/", timeout=10.0)
+            return Response(content=response.content, media_type="text/html")
+        except Exception as e:
+            return {"error": f"Frontend not available: {str(e)}"}
+
+
+@app.get("/{path:path}")
+async def catch_all(path: str):
+    """Proxy all other requests to frontend"""
+    # Skip API routes
+    if path.startswith("api/") or path.startswith("convert") or path.startswith("health"):
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(f"http://localhost:3000/{path}", timeout=10.0)
+            return Response(content=response.content, media_type=response.headers.get("content-type", "text/html"))
+        except Exception:
+            # Return 404 if frontend doesn't have the route
+            raise HTTPException(status_code=404, detail="Not found")
 
 
 @app.post("/convert")
