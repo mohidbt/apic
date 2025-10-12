@@ -47,10 +47,17 @@ async def root():
 @app.get("/")
 async def frontend_root():
     """Proxy to frontend on port 3000"""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
             response = await client.get("http://localhost:3000/", timeout=10.0)
-            return Response(content=response.content, media_type="text/html")
+            # Handle redirects
+            if response.status_code in [301, 302, 303, 307, 308]:
+                return RedirectResponse(url=response.headers.get("location", "/en"))
+            return Response(
+                content=response.content, 
+                media_type=response.headers.get("content-type", "text/html"),
+                status_code=response.status_code
+            )
         except Exception as e:
             return {"error": f"Frontend not available: {str(e)}"}
 
@@ -59,13 +66,20 @@ async def frontend_root():
 async def catch_all(path: str):
     """Proxy all other requests to frontend"""
     # Skip API routes
-    if path.startswith("api/") or path.startswith("convert") or path.startswith("health"):
+    if path.startswith("api") or path.startswith("convert") or path.startswith("health"):
         raise HTTPException(status_code=404, detail="Not found")
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
             response = await client.get(f"http://localhost:3000/{path}", timeout=10.0)
-            return Response(content=response.content, media_type=response.headers.get("content-type", "text/html"))
+            # Handle redirects
+            if response.status_code in [301, 302, 303, 307, 308]:
+                return RedirectResponse(url=response.headers.get("location", f"/{path}"))
+            return Response(
+                content=response.content, 
+                media_type=response.headers.get("content-type", "text/html"),
+                status_code=response.status_code
+            )
         except Exception:
             # Return 404 if frontend doesn't have the route
             raise HTTPException(status_code=404, detail="Not found")
