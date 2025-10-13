@@ -70,8 +70,8 @@ async def frontend_root():
 @app.get("/{path:path}")
 async def catch_all(path: str):
     """Proxy all other requests to frontend"""
-    # Skip API routes - exact matches or paths starting with api/, _next/, etc.
-    if path in ["api", "convert", "health"] or path.startswith("api/") or path.startswith("_next/"):
+    # Skip API routes - only block these specific paths
+    if path in ["api", "convert", "health"] or path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Not found")
     
     async with httpx.AsyncClient(follow_redirects=True) as client:
