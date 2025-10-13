@@ -1,13 +1,18 @@
-# 🚀 Next.js Starter Template
+# API Ingest Frontend
 
-A production-ready Next.js boilerplate with modern tooling, comprehensive testing, and enterprise-grade features.
-### ⭐ **Star this repository if it helped you!** 
+Modern Next.js frontend for the API Ingest application - converting OpenAPI specifications to LLM-ready markdown.
 
-> 💫 **Built with love by [Yeasin](https://github.com/yeasin2002)**  and other contributor
+## 🚀 Quick Start
 
-##### If you found  any issue or have any suggestion, please open an [issue](https://github.com/yeasin2002/nextjs-starter-template/issues) or a [pull request](https://github.com/yeasin2002/nextjs-starter-template/pulls).
+```bash
+# Install dependencies
+npm install
 
-##### Feel free to reach out to me on [Linkedin](https://www.linkedin.com/in/yeasin2002/) or [Gmail](mailto:mdkawsarislam2002@gmail.com) if you have any questions or feedback.
+# Start development server
+npm run dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000) to see the application.
 
 ## ✨ Features
 
@@ -28,11 +33,6 @@ A production-ready Next.js boilerplate with modern tooling, comprehensive testin
 - 🔄 **Database migrations** and seeding
 - 🎛️ **Drizzle Studio** for database management
 
-### 🔐 **Authentication**
-- 👤 **better-auth** integration for auth  management
-- 🔒 **Secure** authentication flows
-- 📧 **Email templates** with React Email
-
 ### 🌍 **Internationalization**
 - 🗣️ **next-intl** for i18n support
 - 🌐 **Locale routing** and translations
@@ -51,68 +51,10 @@ A production-ready Next.js boilerplate with modern tooling, comprehensive testin
 - 🦅 **Codehawk** for code analysis
 - 📦 **Bundle Analyzer** for optimization
 
-### 🐳 **DevOps & Deployment**
-<!-- - 🐳 **Docker** with multi-stage builds -->
-<!-- - 🔄 **Docker Compose** for development/production -->
-- 🏥 **Health checks** and monitoring
-- 📈 **Performance monitoring** with React Scan
-
-### 🛡️ **Security & Performance**
-- 🔒 **Security headers** configured
-<!-- - 🚀 **Standalone output** for Docker -->
-- 📊 **OpenTelemetry** integration
-- ⚡ **Edge runtime** support
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ or Bun
-- PostgreSQL database
-- Git
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yeasin2002/nextjs-starter-template.git
-cd nextjs-starter-template
-
-# Quick setup (recommended)
-npm run setup
-
-# Or manual setup:
-# Install dependencies
-npm install
-# or
-bun install
-
-# Copy environment variables
-cp .env.example .env  # Linux/Mac
-# copy .env.example .env  # Windows
-
-# Set up your database URL and other environment variables
-# Edit .env file with your configuration
-
-# Generate database schema
-npm run db:generate
-
-# Run database migrations
-npm run db:migrate
-
-# Seed the database (optional)
-npm run db:seed
-
-# Start development server
-npm run dev
-```
-
-Visit [http://localhost:3000](http://localhost:3000) to see your application.
-
 ## 📜 Available Scripts
 
 ### 🔧 **Development**
 ```bash
-npm run setup        # Quick project setup
 npm run dev          # Start development server
 npm run build        # Build for production
 npm run start        # Start production server
@@ -147,18 +89,6 @@ npm run knip         # Check for unused code
 npm run codehawk     # Analyze code quality
 ```
 
-<!-- ### 🐳 **Docker**
-```bash
-npm run docker:build # Build Docker image
-npm run docker:dev   # Run development container (Linux/Mac)
-scripts/docker-dev.bat # Windows
-npm run docker:prod  # Run production container (Linux/Mac)
-npm run docker:test  # Run test container (Linux/Mac)
-
-# Windows users can also use:
-# scripts/docker-dev.bat  # Run development container (Windows)
-``` -->
-
 ### 📚 **Storybook**
 ```bash
 npm run storybook       # Start Storybook dev server
@@ -173,74 +103,59 @@ npm run analyze      # Analyze bundle size
 ## 📁 Project Structure
 
 ```
-├── .kiro/              # Kiro AI assistant configuration
-├── .storybook/         # Storybook configuration
-├── config/             # Application configuration
-├── public/             # Static assets
-├── src/
-│   ├── app/            # Next.js App Router pages
-│   ├── components/     # Reusable React components
-│   │   └── ui/         # shadcn/ui components
-│   ├── db/             # Database configuration & schema
-│   ├── hooks/          # Custom React hooks
-│   ├── i18n/           # Internationalization
-│   ├── lib/            # Utility libraries
-│   ├── styles/         # Global CSS
-│   ├── types/          # TypeScript definitions
-│   └── utils/          # Helper functions
-├── tests/              # E2E and integration tests
-└── scripts/            # Build and deployment scripts
+src/
+├── app/            # Next.js App Router pages
+├── components/     # Reusable React components
+│   └── ui/         # shadcn/ui components
+├── db/             # Database configuration & schema
+├── hooks/          # Custom React hooks
+├── i18n/           # Internationalization
+├── lib/            # Utility libraries
+├── styles/         # Global CSS
+├── types/          # TypeScript definitions
+└── utils/          # Helper functions
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
-Copy `.env.example` to `.env` and configure:
-- Database connection
-- Optional: Sentry, PostHog, Stripe, etc.
+Create a `.env.local` file:
 
-### Database Setup
-1. Set your `DATABASE_URL` in `.env`
-2. Run migrations: `npm run db:migrate`
-3. Optional: Seed data: `npm run db:seed`
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-### Authentication
-- Better Auth 
+For production:
+```env
+NEXT_PUBLIC_API_URL=https://your-backend-url.com
+```
 
 ## 🚀 Deployment
-
-<!-- ### Docker Deployment
-```bash
-# Build production image
-npm run docker:build
-
-# Run production container
-npm run docker:prod
-``` -->
 
 ### Vercel Deployment
 1. Connect your repository to Vercel
 2. Set environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
 
+### Koyeb Deployment
+See the main [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) for detailed instructions.
+
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+Contributions are welcome! Please follow the project's code style and testing practices.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](../LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
+Built with modern web technologies:
 - [Next.js](https://nextjs.org/) - The React framework
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 - [shadcn/ui](https://ui.shadcn.com/) - Beautiful UI components
 - [Drizzle ORM](https://orm.drizzle.team/) - TypeScript ORM
+
 ---
 
-
+**Made with ❤️ by Mohid Butt for API Ingest**

@@ -146,7 +146,7 @@ APIIngest is a full-stack application that converts OpenAPI specifications to LL
 Current known bugs: **None** 🎉
 
 To report bugs:
-1. Check [existing issues](https://github.com/yourusername/apiingest/issues)
+1. Check [existing issues](https://github.com/mohidbt/apic/issues)
 2. Create new issue with details
 3. Include example spec if applicable
 

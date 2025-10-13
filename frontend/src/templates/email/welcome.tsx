@@ -9,7 +9,7 @@ export default function WelcomeEmail({ firstName, verificationUrl }: WelcomeEmai
   return (
     <Html>
       <Head />
-      <Preview>Welcome to Next.js Boilerplate! Let's get you started.</Preview>
+      <Preview>Welcome to API Ingest! Let's get you started.</Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={logoContainer}>
@@ -17,16 +17,16 @@ export default function WelcomeEmail({ firstName, verificationUrl }: WelcomeEmai
               src="https://your-domain.com/logo.png"
               width="120"
               height="36"
-              alt="Next.js Boilerplate"
+              alt="API Ingest"
               style={logo}
             />
           </Section>
 
-          <Heading style={h1}>Welcome to Next.js Boilerplate, {firstName}!</Heading>
+          <Heading style={h1}>Welcome to API Ingest, {firstName}!</Heading>
 
           <Text style={text}>
-            Thank you for joining us! We're excited to have you on board and can't wait to see what you'll build with
-            our comprehensive Next.js boilerplate.
+            Thank you for joining us! We're excited to have you on board and can't wait to see how you'll use
+            API Ingest to make your API documentation LLM-ready.
           </Text>
 
           {verificationUrl && (
@@ -57,19 +57,19 @@ export default function WelcomeEmail({ firstName, verificationUrl }: WelcomeEmai
 
           <Text style={text}>
             If you have any questions or need help getting started, don't hesitate to reach out to our support team at{" "}
-            <Link href="mailto:support@example.com" style={link}>
-              support@example.com
+            <Link href="mailto:hi@mohide.de" style={link}>
+              contact@apiingest.com
             </Link>
           </Text>
 
           <Text style={text}>
             Best regards,
             <br />
-            The Next.js Boilerplate Team
+            The API Ingest Team
           </Text>
 
           <Section style={footer}>
-            <Text style={footerText}>© 2024 Next.js Boilerplate. All rights reserved.</Text>
+            <Text style={footerText}>© 2025 API Ingest. All rights reserved.</Text>
             <Text style={footerText}>
               <Link href="https://your-domain.com/unsubscribe" style={footerLink}>
                 Unsubscribe

@@ -22,8 +22,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/apiingest.git
-cd apiingest
+git clone https://github.com/mohidbt/apic.git
+cd apic
 
 # Terminal 1 - Start Backend
 cd backend

@@ -46,7 +46,7 @@ This guide will help you set up and run the full-stack application that converts
 
 1. **Navigate to the frontend directory**:
    ```bash
-   cd frontend/nextjs-starter-template
+   cd frontend
    ```
 
 2. **Install Node.js dependencies**:
@@ -68,8 +68,8 @@ This guide will help you set up and run the full-stack application that converts
 ## Usage
 
 1. **Start both servers** (in separate terminals):
-   - Terminal 1: `python main.py` (from project root)
-   - Terminal 2: `npm run dev` (from frontend/nextjs-starter-template)
+   - Terminal 1: `python main.py` (from backend directory)
+   - Terminal 2: `npm run dev` (from frontend directory)
 
 2. **Open your browser** to http://localhost:3000
 
@@ -184,7 +184,7 @@ To enable auto-reload during development, the server runs with `reload=True`.
 
 The main page component is at:
 ```
-frontend/nextjs-starter-template/src/app/[locale]/page.tsx
+frontend/src/app/[locale]/page.tsx
 ```
 
 Hot reload is enabled by default with Next.js.
@@ -204,7 +204,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 Build the Next.js app:
 
 ```bash
-cd frontend/nextjs-starter-template
+cd frontend
 npm run build
 npm start
 ```

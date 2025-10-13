@@ -1,12 +1,11 @@
 // Application constants
 
 export const APP_CONFIG = {
-  name: "Next.js Boilerplate",
-  description: "A comprehensive Next.js boilerplate with modern tooling",
+  name: "API Ingest",
+  description: "Let LLMs finally understand API Docs.",
   version: "1.0.0",
-  author: "Your Name",
+  author: "Mohid Butt",
   url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-  email: "hello@example.com",
 } as const
 
 export const ROUTES = {
@@ -76,10 +75,9 @@ export const SUPPORTED_FILE_TYPES = [
 ] as const
 
 export const SOCIAL_LINKS = {
-  TWITTER: "https://twitter.com/yourusername",
-  GITHUB: "https://github.com/yourusername",
-  LINKEDIN: "https://linkedin.com/in/yourusername",
-  DISCORD: "https://discord.gg/yourinvite",
+  TWITTER: "https://twitter.com/mohid_b",
+  GITHUB: "https://github.com/mohidbt",
+  LINKEDIN: "https://linkedin.com/in/mohid-butt",
 } as const
 
 export const THEMES = {

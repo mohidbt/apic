@@ -9,7 +9,7 @@
 
 # Terminal 2 - Frontend  
 ./start-frontend.sh
-# or manually: cd frontend/nextjs-starter-template && npm run dev
+# or manually: cd frontend && npm run dev
 ```
 
 ## 🌐 Access Points
@@ -72,7 +72,7 @@ pip install -r requirements.txt
 
 ### Frontend not starting?
 ```bash
-cd frontend/nextjs-starter-template
+cd frontend
 npm install
 ```
 
@@ -132,10 +132,10 @@ lsof -ti:3000 | xargs kill -9
 
 | File | Purpose |
 |------|---------|
-| `main.py` | FastAPI backend server |
-| `transformation.py` | Core conversion logic |
-| `frontend/.../page.tsx` | Main UI component |
-| `frontend/.../layout.tsx` | Root layout |
+| `backend/main.py` | FastAPI backend server |
+| `backend/transformation.py` | Core conversion logic |
+| `frontend/src/app/[locale]/page.tsx` | Main UI component |
+| `frontend/src/app/[locale]/layout.tsx` | Root layout |
 
 ## 💡 Pro Tips
 
