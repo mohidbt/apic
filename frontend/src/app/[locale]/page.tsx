@@ -6,13 +6,32 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Github, Sparkles, Star, Upload, FileText, Loader2 } from 'lucide-react'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [starCount, setStarCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Fetch GitHub star count on component mount
+  useEffect(() => {
+    const fetchStarCount = async () => {
+      try {
+        const response = await fetch('https://api.github.com/repos/mohidbt/apic')
+        if (response.ok) {
+          const data = await response.json()
+          setStarCount(data.stargazers_count)
+        }
+      } catch (error) {
+        console.error('Failed to fetch star count:', error)
+        // Keep starCount as null to hide it if fetch fails
+      }
+    }
+
+    fetchStarCount()
+  }, [])
 
   const validateFile = (file: File): boolean => {
     const validExtensions = ['.yaml', '.yml', '.json']
@@ -132,10 +151,12 @@ export default function HomePage() {
             >
               <Github className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">GitHub</span>
-              <div className="flex items-center">
-                <Star className="h-4 w-4 fill-primary text-primary" />
-                <span className="ml-1 text-sm text-muted-foreground">0</span>
-              </div>
+              {starCount !== null && (
+                <div className="flex items-center">
+                  <Star className="h-4 w-4 fill-primary text-primary" />
+                  <span className="ml-1 text-sm text-muted-foreground">{starCount}</span>
+                </div>
+              )}
             </a>
             <ThemeToggle />
           </div>
