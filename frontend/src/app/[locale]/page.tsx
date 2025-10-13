@@ -63,8 +63,8 @@ export default function HomePage() {
     const formData = new FormData()
     formData.append('file', selectedFile)
 
-    // Use environment variable for API URL, fallback to localhost for development
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    // Use environment variable for API URL, fallback to relative path for production
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
 
     try {
       const response = await fetch(`${apiUrl}/convert`, {
@@ -105,6 +105,8 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Conversion error:', error)
+      console.error('API URL used:', apiUrl)
+      console.error('Full endpoint:', `${apiUrl}/convert`)
       toast.error(error instanceof Error ? error.message : 'Failed to convert file')
     } finally {
       setIsUploading(false)

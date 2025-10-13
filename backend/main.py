@@ -14,6 +14,11 @@ import tempfile
 from pathlib import Path
 from transformation import OpenAPIToMarkdown
 import httpx
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="OpenAPI to Markdown Converter API",
@@ -65,8 +70,8 @@ async def frontend_root():
 @app.get("/{path:path}")
 async def catch_all(path: str):
     """Proxy all other requests to frontend"""
-    # Skip API routes
-    if path.startswith("api") or path.startswith("convert") or path.startswith("health"):
+    # Skip API routes - exact matches or paths starting with api/, _next/, etc.
+    if path in ["api", "convert", "health"] or path.startswith("api/") or path.startswith("_next/"):
         raise HTTPException(status_code=404, detail="Not found")
     
     async with httpx.AsyncClient(follow_redirects=True) as client:
@@ -96,6 +101,8 @@ async def convert_openapi(file: UploadFile = File(...)):
     Returns:
         Markdown file as downloadable response
     """
+    logger.info(f"Received conversion request for file: {file.filename}")
+    
     # Validate file extension
     allowed_extensions = ['.yaml', '.yml', '.json']
     file_extension = Path(file.filename).suffix.lower()
@@ -133,6 +140,8 @@ async def convert_openapi(file: UploadFile = File(...)):
             # Clean up temporary input file
             Path(temp_input_path).unlink()
             
+            logger.info(f"Successfully converted {file.filename} to {output_filename}")
+            
             # Return markdown file as downloadable response
             return StreamingResponse(
                 markdown_bytes,
@@ -144,6 +153,7 @@ async def convert_openapi(file: UploadFile = File(...)):
             
         except Exception as e:
             # Clean up on error
+            logger.error(f"Conversion error: {str(e)}")
             if Path(temp_input_path).exists():
                 Path(temp_input_path).unlink()
             raise HTTPException(
@@ -154,6 +164,7 @@ async def convert_openapi(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error processing upload: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Error processing upload: {str(e)}"

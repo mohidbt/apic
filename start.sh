@@ -7,7 +7,7 @@ mkdir -p /var/log/supervisor
 # Set default environment variables
 export PORT=${PORT:-8000}
 export ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-"http://localhost:3000,https://localhost:3000"}
-export NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-"http://localhost:8000"}
+export NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-""}
 export NODE_ENV=${NODE_ENV:-"production"}
 
 echo "Starting APIIngest combined service..."
