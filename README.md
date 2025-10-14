@@ -1,20 +1,22 @@
 # APIIngest - OpenAPI to LLM-Ready Markdown Converter
 
-🚀 **Full-stack web application** that converts OpenAPI YAML/JSON specifications into structured, LLM-friendly markdown format optimized for AI coding assistants.
+🚀 **Web tool** that converts OpenAPI YAML/JSON specifications into structured, LLM-friendly markdown optimized for AI codegen assistants. 
+[api-ingest.com](https://api-ingest.com/)
+
 
 [![Deploy to Koyeb](https://img.shields.io/badge/Deploy%20to-Koyeb-blue)](https://www.koyeb.com/)
 
 ## ✨ Features
 
 ### Converter Features
-**Dereferences `$ref` schemas** — Inline references for readability  
-**Surfaces authentication** — Security schemes pulled into each endpoint  
-**Base URLs highlighted** — Server information prominently displayed  
-**Runnable examples** — Auto-generated curl commands with placeholders  
-**Strict separators** — Delimiters prevent boundary confusion  (Inspired by GitIngest, see below)
-**Tag grouping** — Organized by tags, alphabetically sorted  
-**Type normalization** — Clean type display (string (uuid), array<User>, etc.)  
-**Token-aware** — Designed to keep endpoint chunks under 2-4K tokens  
+- **Dereferences `$ref` schemas** — Inline references for readability  
+- **Surfaces authentication** — Security schemes pulled into each endpoint  
+- **Base URLs highlighted** — Server information prominently displayed  
+- **Runnable examples** — Auto-generated curl commands with placeholders  
+- **Strict separators** — Delimiters prevent boundary confusion  (Inspired by GitIngest, see below)
+- **Tag grouping** — Organized by tags, alphabetically sorted  
+- **Type normalization** — Clean type display (string (uuid), array<User>, etc.)  
+- **Token-aware** — Designed to keep endpoint chunks under 2-4K tokens  
 
 ## 🚀 Quick Start
 
