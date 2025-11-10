@@ -57,6 +57,13 @@ tmp/
 temp/
 *.tmp
 
+# Database files
+backend/data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
 # Archive (optional - remove this line if you want to commit archived files)
 .archive/
 
