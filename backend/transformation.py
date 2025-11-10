@@ -27,10 +27,15 @@ class OpenAPIToMarkdown:
     
     def __init__(self, spec_path: str, output_path: Optional[str] = None):
         self.spec_path = Path(spec_path)
-        self.output_path = Path(output_path) if output_path else self.spec_path.with_suffix('.md')
         self.spec = self._load_spec()
         self.components = self.spec.get('components', {})
         self.dereferenced_cache = {}
+        
+        # Generate output path based on API name and version
+        if output_path:
+            self.output_path = Path(output_path)
+        else:
+            self.output_path = self._generate_output_filename()
         
     def _load_spec(self) -> Dict[str, Any]:
         """Load OpenAPI spec from YAML or JSON."""
@@ -39,6 +44,26 @@ class OpenAPIToMarkdown:
                 return yaml.safe_load(f)
             else:
                 return json.load(f)
+    
+    def _generate_output_filename(self) -> Path:
+        """Generate output filename based on API name and version."""
+        info = self.spec.get('info', {})
+        api_name = info.get('title', 'api')
+        api_version = info.get('version', '1.0.0')
+        
+        # Sanitize the API name for use in filename
+        # Remove/replace special characters, convert to lowercase, replace spaces with hyphens
+        sanitized_name = re.sub(r'[^\w\s-]', '', api_name.lower())
+        sanitized_name = re.sub(r'[-\s]+', '-', sanitized_name).strip('-')
+        
+        # Sanitize version (remove any non-alphanumeric except dots and hyphens)
+        sanitized_version = re.sub(r'[^\w.-]', '', api_version)
+        
+        # Construct filename: api-name-v1.0.0.md
+        filename = f"{sanitized_name}-v{sanitized_version}.md"
+        
+        # Place in same directory as input file
+        return self.spec_path.parent / filename
     
     def _dereference(self, ref_or_obj: Any, depth: int = 0, max_depth: int = 3) -> Any:
         """

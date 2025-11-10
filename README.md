@@ -274,7 +274,7 @@ Found a bug or have a question?
 Built with inspiration from:
 - Gitingest's LLM-friendly formatting approach
 - OpenAPI Specification community
-- Modern web development best practices
+- Context7 package versioning service for LLMs
 
 ---
 
