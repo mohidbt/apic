@@ -9,6 +9,9 @@ export const rootMetadata: Metadata = {
   keywords: ['API', 'Documentation', 'LLM', 'AI', 'OpenAPI', 'Swagger'],
   authors: [{ name: 'Mohid Butt' }],
   creator: 'Mohid Butt',
+  icons: {
+    icon: '/favicon.ico',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
