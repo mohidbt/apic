@@ -91,7 +91,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "latest",
-    "codehawk-cli": "^10.1.0",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.3",
     "embla-carousel-react": "latest",
@@ -121,6 +120,7 @@
   "devDependencies": {
     "@chromatic-com/storybook": "^4.0.1",
     "@hookform/resolvers": "latest",
+    "codehawk-cli": "^10.1.0",
     "@next/bundle-analyzer": "latest",
     "@playwright/test": "latest",
     "@storybook/addon-a11y": "9.0.18",
