@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Github, Sparkles, Star, Upload, FileText, Loader2 } from 'lucide-react'
+import { Github, Sparkles, Star, Upload, FileText, Loader2, Package } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
+import { Link } from '@/i18n/navigation'
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -143,6 +144,13 @@ export default function HomePage() {
             </span>
           </div>
           <div className="flex items-center space-x-4">
+            <Link 
+              href="/marketplace"
+              className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
+            >
+              <Package className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Specs Marketplace</span>
+            </Link>
             <a 
               href="https://github.com/mohidbt/apic" 
               target="_blank" 
