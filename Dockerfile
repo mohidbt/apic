@@ -3,8 +3,9 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Copy frontend package files
+# Copy frontend package files and npm config
 COPY frontend/package*.json ./
+COPY frontend/.npmrc ./
 
 # Install frontend dependencies with legacy peer deps
 RUN npm ci --legacy-peer-deps
