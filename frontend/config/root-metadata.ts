@@ -9,8 +9,11 @@ export const rootMetadata: Metadata = {
   keywords: ['API', 'Documentation', 'LLM', 'AI', 'OpenAPI', 'Swagger'],
   authors: [{ name: 'Mohid Butt' }],
   creator: 'Mohid Butt',
+  metadataBase: new URL('https://apiingest.koyeb.app'),
   icons: {
     icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
   },
   openGraph: {
     type: 'website',
