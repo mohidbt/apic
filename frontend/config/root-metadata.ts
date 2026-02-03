@@ -11,9 +11,19 @@ export const rootMetadata: Metadata = {
   creator: 'Mohid Butt',
   metadataBase: new URL('https://apiingest.koyeb.app'),
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.ico', type: 'image/x-icon' },
+      { url: '/icon.ico', sizes: 'any' },
+    ],
+    shortcut: ['/favicon.ico', '/icon.ico'],
     apple: '/favicon.ico',
+    other: [
+      {
+        rel: 'icon',
+        url: '/favicon.ico',
+      },
+    ],
   },
   openGraph: {
     type: 'website',
