@@ -36,6 +36,9 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 # Copy backend code
 COPY backend ./backend
 
+# Create data directory for database (will be mounted by persistent volume in production)
+RUN mkdir -p /app/backend/data && chmod 755 /app/backend/data
+
 # Copy built frontend from builder stage
 COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
 COPY --from=frontend-builder /app/frontend/public ./frontend/public

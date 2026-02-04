@@ -128,7 +128,10 @@ def search_specs(
     limit: int = 20
 ) -> Tuple[List[ApiSpec], int]:
     """
-    Full-text search across API specs using FTS5.
+    Search across API specs using simple substring matching.
+    
+    Searches in: name, provider, and markdown_content fields.
+    Uses case-insensitive ILIKE for broad compatibility across databases.
     
     Args:
         db: Database session
@@ -139,37 +142,24 @@ def search_specs(
     Returns:
         Tuple of (list of matching specs, total count)
     """
-    # Use FTS5 for full-text search
-    # Query the FTS virtual table and join with main table
-    sql = text("""
-        SELECT api_specs.*, rank
-        FROM specs_fts
-        JOIN api_specs ON specs_fts.rowid = api_specs.id
-        WHERE specs_fts MATCH :query
-        ORDER BY rank
-        LIMIT :limit OFFSET :skip
-    """)
+    # Build search filter using ILIKE (case-insensitive substring match)
+    search_pattern = f"%{query}%"
+    
+    # Search across name, provider, and markdown content
+    search_filter = or_(
+        ApiSpec.name.ilike(search_pattern),
+        ApiSpec.provider.ilike(search_pattern),
+        ApiSpec.markdown_content.ilike(search_pattern)
+    )
+    
+    # Build query with filter
+    query_obj = db.query(ApiSpec).filter(search_filter)
     
     # Get total count
-    count_sql = text("""
-        SELECT COUNT(*)
-        FROM specs_fts
-        WHERE specs_fts MATCH :query
-    """)
+    total = query_obj.count()
     
-    result = db.execute(sql, {"query": query, "limit": limit, "skip": skip})
-    count_result = db.execute(count_sql, {"query": query})
-    
-    # Convert rows to ApiSpec instances
-    specs = []
-    for row in result:
-        # row is a tuple-like object, first element is id
-        spec_id = row[0] if hasattr(row, '__getitem__') else row.id
-        spec = db.query(ApiSpec).filter(ApiSpec.id == spec_id).first()
-        if spec:
-            specs.append(spec)
-    
-    total = count_result.scalar() or 0
+    # Get paginated results, ordered by upload date (newest first)
+    specs = query_obj.order_by(ApiSpec.uploaded_at.desc()).offset(skip).limit(limit).all()
     
     return specs, total
 

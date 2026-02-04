@@ -176,9 +176,13 @@ for spec in results['specs']:
 - Ignored by git (see `.gitignore`)
 
 **Production (Koyeb):**
-- Database file: `/app/data/apiingest.db`
-- Persists across deployments
-- Set env var: `DATABASE_PATH=/app/data/apiingest.db`
+- Database file: `/app/backend/data/apiingest.db`
+- **IMPORTANT**: You must set up a persistent volume to prevent data loss on deployments
+- Set env var: `DATABASE_PATH=/app/backend/data/apiingest.db`
+- See [docs/KOYEB_PERSISTENT_DB.md](../docs/KOYEB_PERSISTENT_DB.md) for setup instructions
+
+**⚠️ Without a persistent volume, your database will be wiped on every deployment!**
+
 
 ## Backup and Restore
 
