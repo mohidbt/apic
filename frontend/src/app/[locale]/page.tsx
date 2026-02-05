@@ -87,7 +87,7 @@ export default function HomePage() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
 
     try {
-      const response = await fetch(`${apiUrl}/convert`, {
+      const response = await fetch(`${apiUrl}/api/convert`, {
         method: 'POST',
         body: formData,
       })
@@ -126,7 +126,7 @@ export default function HomePage() {
     } catch (error) {
       console.error('Conversion error:', error)
       console.error('API URL used:', apiUrl)
-      console.error('Full endpoint:', `${apiUrl}/convert`)
+      console.error('Full endpoint:', `${apiUrl}/api/convert`)
       toast.error(error instanceof Error ? error.message : 'Failed to convert file')
     } finally {
       setIsUploading(false)

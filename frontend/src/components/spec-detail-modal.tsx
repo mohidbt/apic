@@ -49,12 +49,6 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
     }
   }
 
-  // Truncate markdown content for preview
-  const truncateContent = (content: string, maxLength: number = 2000) => {
-    if (content.length <= maxLength) return content
-    return content.substring(0, maxLength) + '...\n\n*[Content truncated. Download to see full markdown]*'
-  }
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
@@ -186,9 +180,9 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
                 <FileText className="h-4 w-4 text-primary" />
                 Markdown Preview
               </p>
-              <div className="rounded-lg border-2 bg-muted/50 p-4 shadow-inner hover:shadow-md transition-shadow">
-                <pre className="text-xs whitespace-pre-wrap font-mono overflow-x-auto">
-                  {truncateContent(spec.markdown_content)}
+              <div className="rounded-lg border-2 bg-muted/50 shadow-inner hover:shadow-md transition-shadow max-h-[600px] overflow-auto scrollbar-thin">
+                <pre className="text-xs whitespace-pre-wrap font-mono p-4 min-w-0 break-words">
+                  {spec.markdown_content}
                 </pre>
               </div>
             </div>

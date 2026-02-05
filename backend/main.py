@@ -85,7 +85,7 @@ async def root():
     }
 
 
-@app.post("/convert")
+@app.post("/api/convert")
 async def convert_openapi(
     file: UploadFile = File(...),
     save_to_db: bool = Query(True, description="Save conversion to database"),
@@ -435,15 +435,17 @@ async def get_api_versions(
 
 
 # ============================================================================
-# Frontend Proxy Routes (MUST BE LAST - catch-all routes)
+# Frontend Proxy Routes (Production only - for Koyeb single-port deployment)
+# In local development, frontend runs separately on port 3000
 # ============================================================================
 
 @app.get("/")
 async def frontend_root():
-    """Proxy to frontend on port 3000"""
-    async with httpx.AsyncClient(follow_redirects=True) as client:
-        try:
-            response = await client.get("http://localhost:3000/", timeout=10.0)
+    """Proxy to frontend on port 3000 (production) or show API docs (development)"""
+    # Check if we're in development mode (no frontend on 3000)
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=2.0) as client:
+            response = await client.get("http://localhost:3000/", timeout=2.0)
             # Handle redirects
             if response.status_code in [301, 302, 303, 307, 308]:
                 return RedirectResponse(url=response.headers.get("location", "/en"))
@@ -452,16 +454,22 @@ async def frontend_root():
                 media_type=response.headers.get("content-type", "text/html"),
                 status_code=response.status_code
             )
-        except Exception as e:
-            return {"error": f"Frontend not available: {str(e)}"}
+    except Exception:
+        # Frontend not available (local dev), redirect to API docs
+        return RedirectResponse(url="/docs")
 
 
 @app.get("/{path:path}")
 async def catch_all(path: str):
-    """Proxy all other requests to frontend"""
-    async with httpx.AsyncClient(follow_redirects=True) as client:
-        try:
-            response = await client.get(f"http://localhost:3000/{path}", timeout=10.0)
+    """Proxy non-API requests to frontend (production deployment)"""
+    # Never proxy /api routes - they should be handled by FastAPI endpoints above
+    if path.startswith("api"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # Try to proxy to frontend (production)
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=5.0) as client:
+            response = await client.get(f"http://localhost:3000/{path}", timeout=5.0)
             # Handle redirects
             if response.status_code in [301, 302, 303, 307, 308]:
                 return RedirectResponse(url=response.headers.get("location", f"/{path}"))
@@ -470,9 +478,9 @@ async def catch_all(path: str):
                 media_type=response.headers.get("content-type", "text/html"),
                 status_code=response.status_code
             )
-        except Exception:
-            # Return 404 if frontend doesn't have the route
-            raise HTTPException(status_code=404, detail="Not found")
+    except Exception:
+        # Frontend not available (local dev without frontend running)
+        raise HTTPException(status_code=404, detail="Not found")
 
 
 if __name__ == "__main__":
