@@ -1,6 +1,6 @@
-# APIIngest - OpenAPI to LLM-Ready Markdown Converter
+# APIIngest - Let LLMs work with APIs
 
-🚀 **Web tool** that converts OpenAPI YAML/JSON specifications into structured, LLM-friendly markdown optimized for AI codegen assistants. 
+**Handy tool** that converts API specs (OpenAPI YAML/JSON) specifications into structured, LLM-friendly markdown optimized for AI codegen assistants. 
 [api-ingest.com](https://api-ingest.com/)
 
 
