@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Download, FileText, Code, Calendar, Package, User, Database } from 'lucide-react'
 import { SpecDetail } from '@/types/api-spec'
 import { formatFileSize, formatDate, downloadMarkdown, downloadOriginal } from '@/lib/api'
@@ -64,7 +63,7 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">{spec.name}</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
+        <div className="flex-1 overflow-y-auto pr-4">
           <div className="space-y-6 py-4">
             {/* Metadata Section */}
             <div className="grid grid-cols-2 gap-4">
@@ -180,14 +179,14 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
                 <FileText className="h-4 w-4 text-primary" />
                 Markdown Preview
               </p>
-              <div className="rounded-lg border-2 bg-muted/50 shadow-inner hover:shadow-md transition-shadow max-h-[600px] overflow-auto scrollbar-thin">
-                <pre className="text-xs whitespace-pre-wrap font-mono p-4 min-w-0 break-words">
+              <div className="rounded-lg border-2 bg-muted/50 shadow-inner hover:shadow-md transition-shadow h-[600px] overflow-y-auto overflow-x-hidden overscroll-contain w-full min-w-0 scrollbar-stable">
+                <pre className="text-xs whitespace-pre-wrap font-mono p-4 w-full break-words">
                   {spec.markdown_content}
                 </pre>
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   )
