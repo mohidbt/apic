@@ -18,7 +18,6 @@ interface SpecDetailModalProps {
 
 export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
   const [downloading, setDownloading] = useState<'markdown' | 'original' | null>(null)
-  const [isHovered, setIsHovered] = useState(false)
 
   if (!spec) return null
 
@@ -51,13 +50,7 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
-        className={`max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border-2 transition-shadow duration-300 ${
-          isHovered 
-            ? 'shadow-[0_25px_100px_-20px_rgba(0,0,0,0.6)] dark:shadow-[0_25px_100px_-20px_rgba(255,255,255,0.15)]' 
-            : 'shadow-2xl'
-        }`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border-2 transition-shadow duration-300 shadow-[0_18px_60px_-20px_rgba(0,160,0,0.55)] dark:shadow-[0_18px_60px_-20px_rgba(34,255,34,0.55)] hover:shadow-[0_25px_100px_-20px_rgba(0,160,0,0.75)] dark:hover:shadow-[0_25px_100px_-20px_rgba(34,255,34,0.75)]"
       >
         <DialogHeader className="pb-4 border-b">
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">{spec.name}</DialogTitle>
