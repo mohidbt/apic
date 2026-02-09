@@ -401,12 +401,12 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                 <TableCell className="hidden lg:table-cell">
                   <div className="flex flex-wrap gap-1">
                     {spec.tags.slice(0, 2).map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
+                      <Badge key={tag} variant="outline" className="text-xs">
                         {tag}
                       </Badge>
                     ))}
                     {spec.tags.length > 2 && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="outline" className="text-xs">
                         +{spec.tags.length - 2}
                       </Badge>
                     )}

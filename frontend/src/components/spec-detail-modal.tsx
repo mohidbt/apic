@@ -133,7 +133,7 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
                 <p className="text-xs text-muted-foreground mb-3 font-semibold">Tags</p>
                 <div className="flex flex-wrap gap-2">
                   {spec.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="hover:bg-primary/20 transition-colors">
+                    <Badge key={tag} variant="outline" className="hover:bg-muted transition-colors">
                       {tag}
                     </Badge>
                   ))}
