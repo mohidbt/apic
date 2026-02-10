@@ -25,7 +25,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { SpecDetailModal } from '@/components/spec-detail-modal'
 import { Search, ChevronLeft, ChevronRight, Github, Star, Package } from 'lucide-react'
 import { ApiSpec, SpecDetail, Tag } from '@/types/api-spec'
-import { fetchSpecs, fetchSpecDetail, formatFileSize, formatDate } from '@/lib/api'
+import { fetchSpecs, fetchSpecDetail, fetchGitHubStats, formatFileSize, formatDate } from '@/lib/api'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 
@@ -53,20 +53,18 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal }: M
   
   const pageSize = 20
 
-  // Fetch GitHub star count
+  // Fetch GitHub star count from backend API (cached)
   useEffect(() => {
-    const fetchStarCount = async () => {
+    const loadGitHubStats = async () => {
       try {
-        const response = await fetch('https://api.github.com/repos/mohidbt/apic')
-        if (response.ok) {
-          const data = await response.json()
-          setStarCount(data.stargazers_count)
-        }
+        const stats = await fetchGitHubStats()
+        setStarCount(stats.stargazers_count)
       } catch (error) {
-        console.error('Failed to fetch star count:', error)
+        console.error('Failed to fetch GitHub stats:', error)
+        // Silently fail - star count is not critical
       }
     }
-    fetchStarCount()
+    loadGitHubStats()
   }, [])
 
   // Fetch specs when filters change (skip initial load since we have server data)

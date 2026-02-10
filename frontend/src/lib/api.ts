@@ -186,3 +186,23 @@ export function formatDate(dateString: string): string {
   }
 }
 
+/**
+ * Fetch GitHub repository statistics (cached on backend)
+ */
+export async function fetchGitHubStats(): Promise<{
+  stargazers_count: number
+  forks_count?: number
+  watchers_count?: number
+  cached?: boolean
+}> {
+  const API_BASE_URL = getApiBaseUrl()
+  const response = await fetch(`${API_BASE_URL}/api/github/stats`)
+
+  if (!response.ok) {
+    // Return default if API fails
+    return { stargazers_count: 0 }
+  }
+
+  return response.json()
+}
+

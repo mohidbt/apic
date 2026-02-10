@@ -85,7 +85,79 @@ async def root():
     }
 
 
-@app.post("/api/convert")
+# Cache for GitHub stats (simple in-memory cache)
+_github_stats_cache = {
+    "data": None,
+    "timestamp": 0,
+    "cache_duration": 3600  # 1 hour in seconds
+}
+
+
+@app.get("/api/github/stats")
+async def get_github_stats():
+    """
+    Get GitHub repository statistics with caching
+    
+    Returns cached data if available and fresh (< 1 hour old),
+    otherwise fetches from GitHub API
+    
+    Returns:
+        Repository stats including star count
+    """
+    import time
+    
+    current_time = time.time()
+    cache = _github_stats_cache
+    
+    # Return cached data if available and fresh
+    if cache["data"] and (current_time - cache["timestamp"]) < cache["cache_duration"]:
+        logger.debug("Returning cached GitHub stats")
+        return {
+            **cache["data"],
+            "cached": True,
+            "cache_age_seconds": int(current_time - cache["timestamp"])
+        }
+    
+    # Fetch fresh data from GitHub API
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://api.github.com/repos/mohidbt/apic",
+                timeout=5.0,
+                headers={"Accept": "application/vnd.github.v3+json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Extract relevant stats
+                stats = {
+                    "stargazers_count": data.get("stargazers_count", 0),
+                    "forks_count": data.get("forks_count", 0),
+                    "watchers_count": data.get("watchers_count", 0),
+                    "open_issues_count": data.get("open_issues_count", 0),
+                    "cached": False
+                }
+                
+                # Update cache
+                cache["data"] = stats
+                cache["timestamp"] = current_time
+                
+                logger.info(f"Fetched fresh GitHub stats: {stats['stargazers_count']} stars")
+                return stats
+            else:
+                logger.warning(f"GitHub API returned status {response.status_code}")
+                # Return cached data even if stale, or default values
+                if cache["data"]:
+                    return {**cache["data"], "cached": True, "stale": True}
+                return {"stargazers_count": 0, "cached": False, "error": "API unavailable"}
+                
+    except Exception as e:
+        logger.error(f"Error fetching GitHub stats: {e}")
+        # Return cached data if available, even if stale
+        if cache["data"]:
+            return {**cache["data"], "cached": True, "stale": True}
+        return {"stargazers_count": 0, "cached": False, "error": str(e)}
 async def convert_openapi(
     file: UploadFile = File(...),
     save_to_db: bool = Query(True, description="Save conversion to database"),

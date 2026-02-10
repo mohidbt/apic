@@ -9,6 +9,7 @@ import { Github, Sparkles, Star, Upload, FileText, Loader2, Package } from 'luci
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
+import { fetchGitHubStats } from '@/lib/api'
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -16,22 +17,18 @@ export default function HomePage() {
   const [starCount, setStarCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Fetch GitHub star count on component mount
+  // Fetch GitHub star count from backend API (cached)
   useEffect(() => {
-    const fetchStarCount = async () => {
+    const loadGitHubStats = async () => {
       try {
-        const response = await fetch('https://api.github.com/repos/mohidbt/apic')
-        if (response.ok) {
-          const data = await response.json()
-          setStarCount(data.stargazers_count)
-        }
+        const stats = await fetchGitHubStats()
+        setStarCount(stats.stargazers_count)
       } catch (error) {
-        console.error('Failed to fetch star count:', error)
-        // Keep starCount as null to hide it if fetch fails
+        console.error('Failed to fetch GitHub stats:', error)
+        // Silently fail - star count is not critical
       }
     }
-
-    fetchStarCount()
+    loadGitHubStats()
   }, [])
 
   const validateFile = (file: File): boolean => {
