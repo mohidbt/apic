@@ -94,28 +94,39 @@ export async function fetchTags(): Promise<Tag[]> {
 
 /**
  * Download markdown file for a spec
+ * 
+ * Optimized approach: Instead of fetching and converting to blob,
+ * we directly navigate to the download URL which triggers immediate download.
  */
 export async function downloadMarkdown(id: number, name: string, version: string): Promise<void> {
+  // #region agent log
+  const startTime = Date.now()
+  fetch('http://127.0.0.1:7242/ingest/26f372ca-c5c1-4e8f-a08b-c5daee8e57f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:98',message:'downloadMarkdown called (optimized)',data:{id,name,version},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{})
+  // #endregion
+  
   const API_BASE_URL = getApiBaseUrl()
-  const response = await fetch(`${API_BASE_URL}/api/specs/${id}/download/markdown`)
-
-  if (!response.ok) {
-    throw new Error(`Failed to download markdown: ${response.statusText}`)
-  }
-
-  const blob = await response.blob()
-  const url = window.URL.createObjectURL(blob)
+  const url = `${API_BASE_URL}/api/specs/${id}/download/markdown`
+  
+  // Create a temporary anchor element and trigger download
+  // This approach starts the download immediately without waiting for blob conversion
   const a = document.createElement('a')
   a.href = url
   a.download = `${name}-v${version}.md`.replace(/\s+/g, '-')
+  a.style.display = 'none'
   document.body.appendChild(a)
   a.click()
-  window.URL.revokeObjectURL(url)
   document.body.removeChild(a)
+  
+  // #region agent log
+  const totalDuration = Date.now() - startTime
+  fetch('http://127.0.0.1:7242/ingest/26f372ca-c5c1-4e8f-a08b-c5daee8e57f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:119',message:'Download link triggered (optimized)',data:{total_duration_ms:totalDuration},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{})
+  // #endregion
 }
 
 /**
  * Download original OpenAPI file for a spec
+ * 
+ * Optimized approach: Direct download link instead of blob conversion
  */
 export async function downloadOriginal(
   id: number,
@@ -124,21 +135,16 @@ export async function downloadOriginal(
   format: string
 ): Promise<void> {
   const API_BASE_URL = getApiBaseUrl()
-  const response = await fetch(`${API_BASE_URL}/api/specs/${id}/download/original`)
-
-  if (!response.ok) {
-    throw new Error(`Failed to download original file: ${response.statusText}`)
-  }
-
-  const blob = await response.blob()
-  const url = window.URL.createObjectURL(blob)
+  const url = `${API_BASE_URL}/api/specs/${id}/download/original`
+  
+  // Create a temporary anchor element and trigger download
   const a = document.createElement('a')
   a.href = url
   const ext = format === 'json' ? 'json' : 'yaml'
   a.download = `${name}-v${version}.${ext}`.replace(/\s+/g, '-')
+  a.style.display = 'none'
   document.body.appendChild(a)
   a.click()
-  window.URL.revokeObjectURL(url)
   document.body.removeChild(a)
 }
 

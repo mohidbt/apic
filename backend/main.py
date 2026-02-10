@@ -399,15 +399,47 @@ async def download_markdown(
     """
     Download the markdown file for a specific API spec.
     """
+    # #region agent log
+    import time, json
+    start_time = time.time()
+    with open('/Users/m0/Documents/Building/bigberlinhack/.cursor/debug.log', 'a') as f: f.write(json.dumps({'location':'main.py:396','message':'Download markdown endpoint called','data':{'spec_id':spec_id},'timestamp':int(time.time()*1000),'hypothesisId':'A,B,E'})+'\n')
+    # #endregion
+    
+    # #region agent log
+    db_query_start = time.time()
+    # #endregion
+    
     spec = crud.get_spec(db, spec_id)
+    
+    # #region agent log
+    db_query_end = time.time()
+    with open('/Users/m0/Documents/Building/bigberlinhack/.cursor/debug.log', 'a') as f: f.write(json.dumps({'location':'main.py:408','message':'Database query completed','data':{'spec_id':spec_id,'query_duration_ms':(db_query_end-db_query_start)*1000,'spec_found':spec is not None},'timestamp':int(time.time()*1000),'hypothesisId':'A'})+'\n')
+    # #endregion
+    
     if not spec:
         raise HTTPException(status_code=404, detail="Spec not found")
+    
+    # #region agent log
+    markdown_size = len(spec.markdown_content) if spec.markdown_content else 0
+    with open('/Users/m0/Documents/Building/bigberlinhack/.cursor/debug.log', 'a') as f: f.write(json.dumps({'location':'main.py:418','message':'Markdown content loaded','data':{'markdown_size_bytes':markdown_size,'markdown_size_mb':round(markdown_size/1024/1024,2)},'timestamp':int(time.time()*1000),'hypothesisId':'B'})+'\n')
+    encode_start = time.time()
+    # #endregion
     
     # Create BytesIO object from markdown content
     markdown_bytes = io.BytesIO(spec.markdown_content.encode('utf-8'))
     
+    # #region agent log
+    encode_end = time.time()
+    with open('/Users/m0/Documents/Building/bigberlinhack/.cursor/debug.log', 'a') as f: f.write(json.dumps({'location':'main.py:428','message':'BytesIO creation completed','data':{'encode_duration_ms':(encode_end-encode_start)*1000},'timestamp':int(time.time()*1000),'hypothesisId':'B'})+'\n')
+    # #endregion
+    
     # Generate filename
     filename = f"{spec.name}-v{spec.version}.md".replace(' ', '-')
+    
+    # #region agent log
+    total_duration = time.time() - start_time
+    with open('/Users/m0/Documents/Building/bigberlinhack/.cursor/debug.log', 'a') as f: f.write(json.dumps({'location':'main.py:438','message':'Returning StreamingResponse','data':{'total_duration_ms':total_duration*1000,'filename':filename},'timestamp':int(time.time()*1000),'hypothesisId':'E'})+'\n')
+    # #endregion
     
     return StreamingResponse(
         markdown_bytes,
