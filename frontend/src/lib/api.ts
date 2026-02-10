@@ -99,11 +99,6 @@ export async function fetchTags(): Promise<Tag[]> {
  * we directly navigate to the download URL which triggers immediate download.
  */
 export async function downloadMarkdown(id: number, name: string, version: string): Promise<void> {
-  // #region agent log
-  const startTime = Date.now()
-  fetch('http://127.0.0.1:7242/ingest/26f372ca-c5c1-4e8f-a08b-c5daee8e57f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:98',message:'downloadMarkdown called (optimized)',data:{id,name,version},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{})
-  // #endregion
-  
   const API_BASE_URL = getApiBaseUrl()
   const url = `${API_BASE_URL}/api/specs/${id}/download/markdown`
   
@@ -116,11 +111,6 @@ export async function downloadMarkdown(id: number, name: string, version: string
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  
-  // #region agent log
-  const totalDuration = Date.now() - startTime
-  fetch('http://127.0.0.1:7242/ingest/26f372ca-c5c1-4e8f-a08b-c5daee8e57f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:119',message:'Download link triggered (optimized)',data:{total_duration_ms:totalDuration},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{})
-  // #endregion
 }
 
 /**

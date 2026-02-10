@@ -22,26 +22,11 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
   if (!spec) return null
 
   const handleDownloadMarkdown = async () => {
-    // #region agent log
-    const clickTime = Date.now()
-    fetch('http://127.0.0.1:7242/ingest/26f372ca-c5c1-4e8f-a08b-c5daee8e57f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'spec-detail-modal.tsx:24',message:'Download markdown button clicked',data:{spec_id:spec.id,spec_name:spec.name},timestamp:Date.now(),hypothesisId:'D,E'})}).catch(()=>{})
-    // #endregion
-    
     setDownloading('markdown')
     try {
       await downloadMarkdown(spec.id, spec.name, spec.version)
-      
-      // #region agent log
-      const completionTime = Date.now()
-      fetch('http://127.0.0.1:7242/ingest/26f372ca-c5c1-4e8f-a08b-c5daee8e57f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'spec-detail-modal.tsx:34',message:'Download markdown completed successfully',data:{total_time_from_click_ms:completionTime-clickTime},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{})
-      // #endregion
-      
       toast.success('Markdown downloaded successfully')
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/26f372ca-c5c1-4e8f-a08b-c5daee8e57f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'spec-detail-modal.tsx:41',message:'Download markdown failed',data:{error:String(error)},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{})
-      // #endregion
-      
       toast.error('Failed to download markdown')
       console.error(error)
     } finally {
