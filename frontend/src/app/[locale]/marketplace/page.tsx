@@ -336,7 +336,6 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                 <TableHead className="hidden lg:table-cell">UPLOADED</TableHead>
                 <TableHead className="hidden sm:table-cell">SIZE</TableHead>
                 <TableHead className="hidden lg:table-cell">TAGS</TableHead>
-                <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -348,7 +347,6 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -370,7 +368,6 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
               <TableHead className="font-semibold hidden lg:table-cell">UPLOADED</TableHead>
               <TableHead className="font-semibold hidden sm:table-cell">SIZE</TableHead>
               <TableHead className="font-semibold hidden lg:table-cell">TAGS</TableHead>
-              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -411,9 +408,6 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                       </Badge>
                     )}
                   </div>
-                </TableCell>
-                <TableCell>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
                 </TableCell>
               </TableRow>
             ))}
