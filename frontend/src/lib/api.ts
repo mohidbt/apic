@@ -4,7 +4,25 @@
 
 import { ApiSpec, SpecDetail, SpecListResponse, Tag } from '@/types/api-spec'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
+/**
+ * Get the appropriate API base URL based on the environment
+ * - Server-side: Uses internal localhost URL for same-container communication
+ * - Client-side: Uses NEXT_PUBLIC_API_URL (public URL)
+ */
+function getApiBaseUrl(): string {
+  // Check if we're running on the server
+  const isServer = typeof window === 'undefined'
+  
+  if (isServer) {
+    // Server-side: use localhost for internal communication
+    // In production (Koyeb), both frontend and backend run in the same container
+    // So we can use localhost:8000 for faster, internal communication
+    return 'http://localhost:8000'
+  } else {
+    // Client-side: use the public URL from environment variable
+    return process.env.NEXT_PUBLIC_API_URL || ''
+  }
+}
 
 /**
  * Fetch specs with pagination and optional filtering
@@ -15,6 +33,7 @@ export async function fetchSpecs(
   search?: string,
   tag?: string
 ): Promise<SpecListResponse> {
+  const API_BASE_URL = getApiBaseUrl()
   const skip = (page - 1) * limit
   const params = new URLSearchParams({
     skip: skip.toString(),
@@ -46,6 +65,7 @@ export async function fetchSpecs(
  * Fetch detailed information about a specific spec
  */
 export async function fetchSpecDetail(id: number): Promise<SpecDetail> {
+  const API_BASE_URL = getApiBaseUrl()
   const response = await fetch(`${API_BASE_URL}/api/specs/${id}`)
 
   if (!response.ok) {
@@ -62,6 +82,7 @@ export async function fetchSpecDetail(id: number): Promise<SpecDetail> {
  * Fetch all available tags with their spec counts
  */
 export async function fetchTags(): Promise<Tag[]> {
+  const API_BASE_URL = getApiBaseUrl()
   const response = await fetch(`${API_BASE_URL}/api/tags`)
 
   if (!response.ok) {
@@ -75,6 +96,7 @@ export async function fetchTags(): Promise<Tag[]> {
  * Download markdown file for a spec
  */
 export async function downloadMarkdown(id: number, name: string, version: string): Promise<void> {
+  const API_BASE_URL = getApiBaseUrl()
   const response = await fetch(`${API_BASE_URL}/api/specs/${id}/download/markdown`)
 
   if (!response.ok) {
@@ -101,6 +123,7 @@ export async function downloadOriginal(
   version: string,
   format: string
 ): Promise<void> {
+  const API_BASE_URL = getApiBaseUrl()
   const response = await fetch(`${API_BASE_URL}/api/specs/${id}/download/original`)
 
   if (!response.ok) {
