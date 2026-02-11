@@ -184,6 +184,7 @@ export function formatDate(dateString: string): string {
 
 /**
  * Fetch GitHub repository statistics (cached on backend)
+ * Server-side fetching with Next.js revalidation (1 hour)
  */
 export async function fetchGitHubStats(): Promise<{
   stargazers_count: number
@@ -191,14 +192,22 @@ export async function fetchGitHubStats(): Promise<{
   watchers_count?: number
   cached?: boolean
 }> {
-  const API_BASE_URL = getApiBaseUrl()
-  const response = await fetch(`${API_BASE_URL}/api/github/stats`)
+  try {
+    const API_BASE_URL = getApiBaseUrl()
+    const response = await fetch(`${API_BASE_URL}/api/github/stats`, {
+      next: { revalidate: 3600 } // Next.js cache for 1 hour (matches backend cache)
+    })
 
-  if (!response.ok) {
-    // Return default if API fails
+    if (!response.ok) {
+      // Return default if API fails
+      return { stargazers_count: 0 }
+    }
+
+    return response.json()
+  } catch (error) {
+    console.error('Failed to fetch GitHub stats:', error)
+    // Return default on any error
     return { stargazers_count: 0 }
   }
-
-  return response.json()
 }
 

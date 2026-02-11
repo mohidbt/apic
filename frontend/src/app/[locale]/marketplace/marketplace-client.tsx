@@ -25,7 +25,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { SpecDetailModal } from '@/components/spec-detail-modal'
 import { Search, ChevronLeft, ChevronRight, Github, Star, Package } from 'lucide-react'
 import { ApiSpec, SpecDetail, Tag } from '@/types/api-spec'
-import { fetchSpecs, fetchSpecDetail, fetchGitHubStats, formatFileSize, formatDate } from '@/lib/api'
+import { fetchSpecs, fetchSpecDetail, formatFileSize, formatDate } from '@/lib/api'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 
@@ -35,9 +35,10 @@ interface MarketplaceClientProps {
   initialSpecs: ApiSpec[]
   initialTags: Tag[]
   initialTotal: number
+  starCount: number
 }
 
-export function MarketplaceClient({ initialSpecs, initialTags, initialTotal }: MarketplaceClientProps) {
+export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, starCount }: MarketplaceClientProps) {
   const [specs, setSpecs] = useState<ApiSpec[]>(initialSpecs)
   const [tags] = useState<Tag[]>(initialTags)
   const [selectedTag, setSelectedTag] = useState<string>('all')
@@ -49,23 +50,8 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal }: M
   const [activeTab, setActiveTab] = useState<TabType>('recent')
   const [selectedSpec, setSelectedSpec] = useState<SpecDetail | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [starCount, setStarCount] = useState<number | null>(null)
   
   const pageSize = 20
-
-  // Fetch GitHub star count from backend API (cached)
-  useEffect(() => {
-    const loadGitHubStats = async () => {
-      try {
-        const stats = await fetchGitHubStats()
-        setStarCount(stats.stargazers_count)
-      } catch (error) {
-        console.error('Failed to fetch GitHub stats:', error)
-        // Silently fail - star count is not critical
-      }
-    }
-    loadGitHubStats()
-  }, [])
 
   // Fetch specs when filters change (skip initial load since we have server data)
   useEffect(() => {
@@ -158,7 +144,7 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal }: M
             >
               <Github className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">GitHub</span>
-              {starCount !== null && (
+              {starCount > 0 && (
                 <div className="flex items-center">
                   <Star className="h-4 w-4 fill-primary text-primary" />
                   <span className="ml-1 text-sm text-muted-foreground">{starCount}</span>
