@@ -157,6 +157,16 @@ export function formatFileSize(bytes: number | null): string {
 }
 
 /**
+ * Format token count for compact display
+ */
+export function formatTokenCount(tokens: number | null): string {
+  if (tokens === null || tokens === undefined) return 'N/A'
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`
+  if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`
+  return tokens.toString()
+}
+
+/**
  * Format date string to human-readable format
  */
 export function formatDate(dateString: string): string {

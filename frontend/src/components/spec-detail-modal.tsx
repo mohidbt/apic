@@ -4,9 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Download, FileText, Code, Calendar, Package, User, Database } from 'lucide-react'
+import { Download, FileText, Code, Calendar, Package, User, Database, Hash } from 'lucide-react'
 import { SpecDetail } from '@/types/api-spec'
-import { formatFileSize, formatDate, downloadMarkdown, downloadOriginal } from '@/lib/api'
+import { formatFileSize, formatDate, formatTokenCount, downloadMarkdown, downloadOriginal } from '@/lib/api'
 import { toast } from 'sonner'
 import { useState } from 'react'
 
@@ -99,6 +99,16 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
                 <div>
                   <p className="text-xs text-muted-foreground">File Size</p>
                   <p className="text-sm font-medium">{formatFileSize(spec.file_size_bytes)}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                <div className="p-2 rounded-md bg-primary/10">
+                  <Hash className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Token Count</p>
+                  <p className="text-sm font-medium">{formatTokenCount(spec.token_count)}</p>
                 </div>
               </div>
 

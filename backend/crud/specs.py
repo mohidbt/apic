@@ -35,6 +35,7 @@ def create_spec(
         original_format=spec_data.original_format,
         original_content=spec_data.original_content,
         markdown_content=spec_data.markdown_content,
+        token_count=spec_data.token_count,
         uploaded_by=spec_data.uploaded_by,
         file_size_bytes=spec_data.file_size_bytes,
     )

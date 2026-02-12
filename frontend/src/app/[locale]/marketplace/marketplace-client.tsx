@@ -25,7 +25,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { SpecDetailModal } from '@/components/spec-detail-modal'
 import { Search, ChevronLeft, ChevronRight, Github, Star, Package } from 'lucide-react'
 import { ApiSpec, SpecDetail, Tag } from '@/types/api-spec'
-import { fetchSpecs, fetchSpecDetail, formatFileSize, formatDate } from '@/lib/api'
+import { fetchSpecs, fetchSpecDetail, formatFileSize, formatDate, formatTokenCount } from '@/lib/api'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
 
@@ -306,6 +306,7 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                 <TableHead>VERSION</TableHead>
                 <TableHead className="hidden lg:table-cell">UPLOADED</TableHead>
                 <TableHead className="hidden sm:table-cell">SIZE</TableHead>
+                <TableHead className="hidden lg:table-cell">TOKENS</TableHead>
                 <TableHead className="hidden lg:table-cell">TAGS</TableHead>
               </TableRow>
             </TableHeader>
@@ -317,6 +318,7 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-14" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                 </TableRow>
               ))}
@@ -343,6 +345,7 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
               <TableHead className="font-semibold">VERSION</TableHead>
               <TableHead className="font-semibold hidden lg:table-cell">UPLOADED</TableHead>
               <TableHead className="font-semibold hidden sm:table-cell">SIZE</TableHead>
+              <TableHead className="font-semibold hidden lg:table-cell">TOKENS</TableHead>
               <TableHead className="font-semibold hidden lg:table-cell">TAGS</TableHead>
             </TableRow>
           </TableHeader>
@@ -370,6 +373,9 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden sm:table-cell">
                   {formatFileSize(spec.file_size_bytes)}
+                </TableCell>
+                <TableCell className="text-muted-foreground hidden lg:table-cell">
+                  {formatTokenCount(spec.token_count)}
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
                   <div className="flex flex-wrap gap-1">

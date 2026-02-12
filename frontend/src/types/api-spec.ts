@@ -16,6 +16,7 @@ export interface ApiSpec {
   provider: string | null
   original_filename: string | null
   original_format: string | null
+  token_count: number | null
   uploaded_at: string
   uploaded_by: string | null
   file_size_bytes: number | null

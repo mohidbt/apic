@@ -91,6 +91,25 @@ def init_db():
     
     # Create all tables
     Base.metadata.create_all(bind=engine)
+
+    # Lightweight startup migration for existing databases that predate token_count.
+    # create_all() does not alter existing tables.
+    with engine.connect() as conn:
+        if IS_SQLITE:
+            columns = conn.execute(text("PRAGMA table_info(api_specs)")).fetchall()
+            has_token_count = any(col[1] == "token_count" for col in columns)
+            if not has_token_count:
+                conn.execute(text("ALTER TABLE api_specs ADD COLUMN token_count INTEGER"))
+                conn.commit()
+        else:
+            result = conn.execute(text("""
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name = 'api_specs' AND column_name = 'token_count'
+            """))
+            if not result.fetchone():
+                conn.execute(text("ALTER TABLE api_specs ADD COLUMN token_count INTEGER"))
+                conn.commit()
     
     # Create FTS5 virtual table and triggers manually (SQLite only)
     # PostgreSQL and other databases will use simple substring search instead

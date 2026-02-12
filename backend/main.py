@@ -19,6 +19,7 @@ from typing import Optional, List
 from transformation import OpenAPIToMarkdown
 import httpx
 import logging
+import tiktoken
 
 # Import database models and CRUD operations
 from models.database import get_db, init_db
@@ -35,6 +36,18 @@ from schemas.api_spec import (
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def estimate_token_count(text: str, model: str = "gpt-4") -> int:
+    """
+    Estimate token count for markdown content using tiktoken.
+    Falls back to cl100k_base encoding if model lookup fails.
+    """
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        encoding = tiktoken.get_encoding("cl100k_base")
+    return len(encoding.encode(text))
 
 
 @asynccontextmanager
@@ -203,6 +216,7 @@ async def convert_openapi(
             # Convert using the transformation module
             converter = OpenAPIToMarkdown(temp_input_path)
             markdown_content = converter.convert()
+            token_count = estimate_token_count(markdown_content)
             
             # Create output filename
             output_filename = Path(file.filename).stem + '.md'
@@ -230,6 +244,7 @@ async def convert_openapi(
                         original_format='yaml' if file_extension in ['.yaml', '.yml'] else 'json',
                         original_content=content.decode('utf-8'),
                         markdown_content=markdown_content,
+                        token_count=token_count,
                         file_size_bytes=len(content),
                         tags=tag_names
                     )
@@ -264,7 +279,8 @@ async def convert_openapi(
                 markdown_bytes,
                 media_type="text/markdown",
                 headers={
-                    "Content-Disposition": f"attachment; filename={output_filename}"
+                    "Content-Disposition": f"attachment; filename={output_filename}",
+                    "X-Token-Count": str(token_count),
                 }
             )
             

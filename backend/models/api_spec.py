@@ -31,6 +31,7 @@ class ApiSpec(Base):
     original_format = Column(String(10), nullable=True)  # 'yaml' or 'json'
     original_content = Column(Text, nullable=False)
     markdown_content = Column(Text, nullable=False)
+    token_count = Column(Integer, nullable=True)
     uploaded_at = Column(DateTime, nullable=False, server_default=func.now(), index=True)
     uploaded_by = Column(String(255), nullable=True)
     file_size_bytes = Column(Integer, nullable=True)
@@ -60,6 +61,7 @@ class ApiSpec(Base):
             'provider': self.provider,
             'original_filename': self.original_filename,
             'original_format': self.original_format,
+            'token_count': self.token_count,
             'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None,
             'uploaded_by': self.uploaded_by,
             'file_size_bytes': self.file_size_bytes,

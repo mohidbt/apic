@@ -31,6 +31,7 @@ class SpecCreate(BaseModel):
     original_format: Optional[str] = Field(None, pattern='^(yaml|json)$')
     original_content: str = Field(..., min_length=1)
     markdown_content: str = Field(..., min_length=1)
+    token_count: Optional[int] = Field(None, ge=0)
     uploaded_by: Optional[str] = Field(None, max_length=255)
     file_size_bytes: Optional[int] = Field(None, ge=0)
     tags: Optional[List[str]] = Field(default_factory=list)
@@ -44,6 +45,7 @@ class SpecResponse(BaseModel):
     provider: Optional[str]
     original_filename: Optional[str]
     original_format: Optional[str]
+    token_count: Optional[int]
     uploaded_at: datetime
     uploaded_by: Optional[str]
     file_size_bytes: Optional[int]
