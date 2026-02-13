@@ -162,15 +162,16 @@ export default function HomeClient({ starCount }: HomeClientProps) {
           {/* Title Section */}
           <div className="mb-8 text-center">
             <h1 className="mb-4 text-6xl font-bold tracking-tight text-foreground md:text-7xl">
-              LLM-Ready
-              <br />
               API Docs
+              <br />
+              as LLM Skills
             </h1>
             <p className="mx-auto mb-2 max-w-2xl text-lg text-muted-foreground">
             Let LLMs finally understand API Docs.
             </p>
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
               Just insert your YAML or JSON API spec and get LLM-Ready Markdown back.
+              Or use our marketplace download API-Skills.
             </p>
           </div>
 
