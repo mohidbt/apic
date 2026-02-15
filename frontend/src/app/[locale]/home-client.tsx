@@ -247,7 +247,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
             {/* Example Files Notice */}
             <div className="space-y-4">
               <p className="text-center text-sm text-card-foreground">
-                Upload your OpenAPI specification file (YAML/JSON) and get LLM-ready Markdown
+                Upload your OpenAPI specification file (YAML/YML/JSON) and get LLM-ready Markdown
               </p>
               <div className="rounded-lg border-2 border-border bg-background p-4 text-center">
                 <p className="mb-2 text-sm font-bold text-muted-foreground">
