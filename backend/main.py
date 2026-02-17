@@ -75,9 +75,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS to allow frontend requests
-# Get allowed origins from environment variable or use defaults for local development
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
+# Configure CORS to allow frontend requests.
+# Normalize origins to avoid trailing slash mismatches (Origin header has no trailing slash).
+allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")
+allowed_origins = [
+    origin.strip().rstrip("/")
+    for origin in allowed_origins_raw.split(",")
+    if origin.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -85,6 +90,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Token-Count", "X-Marketplace-Save-Status", "X-Marketplace-Spec-Id"],
 )
 
 
@@ -224,6 +230,9 @@ async def convert_openapi(
             # Create output filename
             output_filename = Path(file.filename).stem + '.md'
             
+            marketplace_save_status = "skipped"
+            marketplace_spec_id = ""
+
             # Save to database if requested
             if save_to_db:
                 try:
@@ -260,13 +269,19 @@ async def convert_openapi(
                     if not existing_spec:
                         db_spec = crud.create_spec(db, spec_data)
                         logger.info(f"✅ Saved spec to database: ID={db_spec.id}")
+                        marketplace_save_status = "created"
+                        marketplace_spec_id = str(db_spec.id)
                     else:
                         logger.info(f"ℹ️ Spec already exists in database: ID={existing_spec.id}")
+                        marketplace_save_status = "exists"
+                        marketplace_spec_id = str(existing_spec.id)
                         
                 except IntegrityError as e:
                     logger.warning(f"⚠️ Could not save to database (duplicate?): {e}")
+                    marketplace_save_status = "exists"
                 except Exception as e:
                     logger.error(f"⚠️ Error saving to database: {e}")
+                    marketplace_save_status = "failed"
                     # Continue with conversion even if database save fails
             
             # Create a BytesIO object for the response
@@ -284,6 +299,8 @@ async def convert_openapi(
                 headers={
                     "Content-Disposition": f"attachment; filename={output_filename}",
                     "X-Token-Count": str(token_count),
+                    "X-Marketplace-Save-Status": marketplace_save_status,
+                    "X-Marketplace-Spec-Id": marketplace_spec_id,
                 }
             )
             

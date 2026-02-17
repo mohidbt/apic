@@ -1,14 +1,12 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Github, Sparkles, Star, Upload, FileText, Loader2, Package } from 'lucide-react'
+import { Github, Star, Upload, FileText, Loader2, Package } from 'lucide-react'
 import { useState, useRef } from 'react'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
+import { ContributeDialog } from '@/components/contribute-dialog'
 
 interface HomeClientProps {
   starCount: number
@@ -17,7 +15,35 @@ interface HomeClientProps {
 export default function HomeClient({ starCount }: HomeClientProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+  const [showContributeDialog, setShowContributeDialog] = useState(false)
+  const [convertedBlob, setConvertedBlob] = useState<Blob | null>(null)
+  const [convertedFilename, setConvertedFilename] = useState('converted.md')
+  const [convertedTokenCount, setConvertedTokenCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const triggerDownload = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  }
+
+  const resetUploadState = () => {
+    setSelectedFile(null)
+    setConvertedBlob(null)
+    setConvertedFilename('converted.md')
+    setConvertedTokenCount(null)
+    setShowContributeDialog(false)
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   const validateFile = (file: File): boolean => {
     const validExtensions = ['.yaml', '.yml', '.json']
@@ -72,7 +98,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
 
     try {
-      const response = await fetch(`${apiUrl}/api/convert`, {
+      const response = await fetch(`${apiUrl}/api/convert?save_to_db=false`, {
         method: 'POST',
         body: formData,
       })
@@ -92,22 +118,15 @@ export default function HomeClient({ starCount }: HomeClientProps) {
         }
       }
 
-      // Download the file
       const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const tokenCountHeader = response.headers.get('X-Token-Count')
+      const tokenCount = tokenCountHeader ? Number(tokenCountHeader) : null
 
-      toast.success('File converted and downloaded successfully!')
-      setSelectedFile(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+      setConvertedBlob(blob)
+      setConvertedFilename(filename)
+      setConvertedTokenCount(Number.isFinite(tokenCount) ? tokenCount : null)
+      setShowContributeDialog(true)
+      toast.success('Conversion successful. Choose how to continue.')
     } catch (error) {
       console.error('Conversion error:', error)
       console.error('API URL used:', apiUrl)
@@ -115,6 +134,66 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       toast.error(error instanceof Error ? error.message : 'Failed to convert file')
     } finally {
       setIsUploading(false)
+    }
+  }
+
+  const handleDownloadOnly = () => {
+    if (!convertedBlob) {
+      toast.error('No converted file found. Please convert again.')
+      return
+    }
+
+    triggerDownload(convertedBlob, convertedFilename)
+    toast.success('File downloaded successfully!')
+    resetUploadState()
+  }
+
+  const handleDownloadAndShare = async () => {
+    if (!selectedFile || !convertedBlob) {
+      toast.error('Missing file data. Please convert again.')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('file', selectedFile)
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
+
+    setIsSharing(true)
+    try {
+      const response = await fetch(`${apiUrl}/api/convert?save_to_db=true`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        let message = 'Failed to share with marketplace'
+        try {
+          const errorData = await response.json()
+          message = errorData.detail || message
+        } catch {
+          // Use fallback message when response is not JSON.
+        }
+        throw new Error(message)
+      }
+
+      const saveStatus = response.headers.get('X-Marketplace-Save-Status')
+      triggerDownload(convertedBlob, convertedFilename)
+
+      if (saveStatus === 'created') {
+        toast.success('Shared to marketplace and downloaded!')
+      } else if (saveStatus === 'exists') {
+        toast.success('Already exists in marketplace. File downloaded!')
+      } else if (saveStatus === 'failed') {
+        toast.warning('File downloaded, but marketplace save failed.')
+      } else {
+        toast.success('File downloaded successfully!')
+      }
+
+      resetUploadState()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to share with marketplace')
+    } finally {
+      setIsSharing(false)
     }
   }
 
@@ -264,6 +343,16 @@ export default function HomeClient({ starCount }: HomeClientProps) {
           </div>
         </div>
       </main>
+
+      <ContributeDialog
+        open={showContributeDialog}
+        onOpenChange={setShowContributeDialog}
+        filename={convertedFilename}
+        tokenCount={convertedTokenCount}
+        onDownloadOnly={handleDownloadOnly}
+        onDownloadAndShare={handleDownloadAndShare}
+        isSharing={isSharing}
+      />
     </div>
   )
 }

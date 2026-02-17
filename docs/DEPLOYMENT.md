@@ -60,7 +60,7 @@ Create these environment variables in Koyeb:
 
 ```bash
 # Required
-ALLOWED_ORIGINS=https://{{ KOYEB_PUBLIC_DOMAIN }}/
+ALLOWED_ORIGINS=https://{{ KOYEB_PUBLIC_DOMAIN }}
 DATABASE_URL=postgresql+psycopg://user:pass@host:5432/db
 NEXT_PUBLIC_API_URL=https://{{ KOYEB_PUBLIC_DOMAIN }}
 NODE_ENV=production
@@ -110,7 +110,7 @@ koyeb service create apiingest \
   --docker-dockerfile Dockerfile \
   --ports 8000:http \
   --routes /:8000 \
-  --env ALLOWED_ORIGINS=https://\{\{KOYEB_PUBLIC_DOMAIN\}\}/ \
+  --env ALLOWED_ORIGINS=https://\{\{KOYEB_PUBLIC_DOMAIN\}\} \
   --env DATABASE_URL=your_postgresql_url \
   --env NEXT_PUBLIC_API_URL=https://\{\{KOYEB_PUBLIC_DOMAIN\}\} \
   --env NODE_ENV=production \
@@ -177,7 +177,7 @@ function getApiBaseUrl(): string {
 
 ```bash
 # Required for Production
-ALLOWED_ORIGINS=https://{{ KOYEB_PUBLIC_DOMAIN }}/
+ALLOWED_ORIGINS=https://{{ KOYEB_PUBLIC_DOMAIN }}
 DATABASE_URL=postgresql+psycopg://postgres:xxx@db.host.supabase.co:5432/postgres
 NEXT_PUBLIC_API_URL=https://{{ KOYEB_PUBLIC_DOMAIN }}
 NODE_ENV=production
@@ -193,7 +193,7 @@ PYTHONUNBUFFERED=1
 
 | Variable | Used By | Description |
 |----------|---------|-------------|
-| `ALLOWED_ORIGINS` | Backend | CORS configuration (trailing `/` required) |
+| `ALLOWED_ORIGINS` | Backend | CORS configuration (exact origins, no trailing `/`) |
 | `DATABASE_URL` | Backend | PostgreSQL connection string (Supabase) |
 | `NEXT_PUBLIC_API_URL` | Frontend (client) | Public API URL for browser requests |
 | `NODE_ENV` | Both | Set to `production` for optimizations |
@@ -310,15 +310,29 @@ Monitor in Koyeb dashboard:
 **Problem**: `Access-Control-Allow-Origin` errors in browser console
 
 **Solutions**:
-- Ensure `ALLOWED_ORIGINS` includes your domain with trailing `/`
+- Ensure `ALLOWED_ORIGINS` includes your exact domain origin (no trailing `/`)
   ```bash
-  ALLOWED_ORIGINS=https://your-app.koyeb.app/
+  ALLOWED_ORIGINS=https://your-app.koyeb.app
   ```
 - If using custom domain, add both with and without www:
   ```bash
   ALLOWED_ORIGINS=https://yourdomain.com/,https://www.yourdomain.com/
   ```
 - Redeploy service after updating environment variables
+
+### Verify Convert Headers (Token + Marketplace Status)
+
+After deploying a fix, verify that `/api/convert` responses include:
+
+- `X-Token-Count`
+- `X-Marketplace-Save-Status` (`skipped`, `created`, `exists`, `failed`)
+- `X-Marketplace-Spec-Id` (when available)
+
+Quick check in browser:
+1. Open DevTools Network tab.
+2. Convert a file from the landing page.
+3. Click the `POST /api/convert` request and confirm those response headers exist.
+4. Confirm the UI shows token count and correct share outcome message.
 
 ### Build Failures
 
@@ -451,7 +465,7 @@ Koyeb offers a generous free tier:
 
 4. **CORS Configuration**:
    - Restrict `ALLOWED_ORIGINS` to specific domains (no wildcards)
-   - Include trailing `/` in origin URLs
+   - Use exact origin URLs without trailing `/`
    - Example:
      ```bash
      ALLOWED_ORIGINS=https://yourdomain.com/,https://www.yourdomain.com/
@@ -477,7 +491,7 @@ docker build -t apiingest:local .
 
 # Run with production-like environment
 docker run -p 8000:8000 \
-  -e ALLOWED_ORIGINS="http://localhost:8000/" \
+  -e ALLOWED_ORIGINS="http://localhost:8000" \
   -e DATABASE_URL="postgresql://..." \
   -e NEXT_PUBLIC_API_URL="http://localhost:8000" \
   -e NODE_ENV="production" \
@@ -511,7 +525,7 @@ docker-compose up
 
 Before deploying, ensure you have:
 
-- [ ] `ALLOWED_ORIGINS` - Your domain with trailing `/`
+- [ ] `ALLOWED_ORIGINS` - Your exact domain origin (no trailing `/`)
 - [ ] `DATABASE_URL` - Supabase PostgreSQL connection string
 - [ ] `NEXT_PUBLIC_API_URL` - Your public domain (client-side)
 - [ ] `NODE_ENV` - Set to `production`
