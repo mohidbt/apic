@@ -251,7 +251,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
               </p>
               <div className="rounded-lg border-2 border-border bg-background p-4 text-center">
                 <p className="mb-2 text-sm font-bold text-muted-foreground">
-                  ✨ Why LLMs not only love this, but actually need this ✨ 
+                  ✨ Why LLMs not only love, but actually need this ✨ 
                 </p>
                 <ul className="space-y-1 text-xs text-muted-foreground">
                   <li>Dereferences $ref schemas</li>

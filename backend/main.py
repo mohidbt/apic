@@ -171,6 +171,9 @@ async def get_github_stats():
         if cache["data"]:
             return {**cache["data"], "cached": True, "stale": True}
         return {"stargazers_count": 0, "cached": False, "error": str(e)}
+
+
+@app.post("/api/convert")
 async def convert_openapi(
     file: UploadFile = File(...),
     save_to_db: bool = Query(True, description="Save conversion to database"),
