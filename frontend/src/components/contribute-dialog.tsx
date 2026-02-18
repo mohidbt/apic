@@ -40,7 +40,7 @@ export function ContributeDialog({
 }: ContributeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <div className="mb-3 flex items-center gap-2 text-green-600">
             <CheckCircle2 className="h-5 w-5" />
@@ -72,12 +72,16 @@ export function ContributeDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-end">
-          <Button variant="outline" onClick={onDownloadOnly} disabled={isSharing}>
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={onDownloadOnly} disabled={isSharing} className="w-full sm:w-auto">
             <Download className="mr-2 h-4 w-4" />
             Just Download
           </Button>
-          <Button onClick={onDownloadAndShare} disabled={isSharing}>
+          <Button
+            onClick={onDownloadAndShare}
+            disabled={isSharing}
+            className="h-auto w-full whitespace-normal py-2 text-left sm:h-10 sm:w-auto sm:whitespace-nowrap sm:py-0 sm:text-center"
+          >
             <Share2 className="mr-2 h-4 w-4" />
             {isSharing ? 'Sharing...' : 'Download & Share to Marketplace'}
           </Button>
