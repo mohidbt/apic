@@ -40,7 +40,7 @@ export function ContributeDialog({
 }: ContributeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <div className="mb-3 flex items-center gap-2 text-green-600">
             <CheckCircle2 className="h-5 w-5" />
@@ -52,10 +52,10 @@ export function ContributeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="rounded-lg border bg-muted/30 p-4">
+        <div className="min-w-0 space-y-4">
+          <div className="min-w-0 overflow-hidden rounded-lg border bg-muted/30 p-4">
             <p className="text-sm text-muted-foreground">File</p>
-            <p className="truncate text-sm font-medium text-foreground">{filename}</p>
+            <p className="block max-w-full truncate text-sm font-medium text-foreground">{filename}</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Estimated tokens: {formatTokenCount(tokenCount)}
             </p>
@@ -72,15 +72,15 @@ export function ContributeDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={onDownloadOnly} disabled={isSharing} className="w-full sm:w-auto">
+        <DialogFooter className="min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+          <Button variant="outline" onClick={onDownloadOnly} disabled={isSharing} className="min-w-0 w-full sm:w-auto">
             <Download className="mr-2 h-4 w-4" />
             Just Download
           </Button>
           <Button
             onClick={onDownloadAndShare}
             disabled={isSharing}
-            className="h-auto w-full whitespace-normal py-2 text-left sm:h-10 sm:w-auto sm:whitespace-nowrap sm:py-0 sm:text-center"
+            className="h-auto min-w-0 w-full whitespace-normal break-words py-2 text-left sm:basis-full sm:py-2 sm:text-left md:basis-auto md:w-auto md:text-center"
           >
             <Share2 className="mr-2 h-4 w-4" />
             {isSharing ? 'Sharing...' : 'Download & Share to Marketplace'}
