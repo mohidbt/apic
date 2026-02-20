@@ -21,6 +21,24 @@ export default function HomeClient({ starCount }: HomeClientProps) {
   const [convertedFilename, setConvertedFilename] = useState('converted.md')
   const [convertedTokenCount, setConvertedTokenCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const REQUEST_TIMEOUT_MS = 120000
+
+  const createRequestId = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+    return `req-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  }
+
+  const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    try {
+      return await fetch(input, { ...init, signal: controller.signal })
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  }
 
   const triggerDownload = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob)
@@ -97,10 +115,16 @@ export default function HomeClient({ starCount }: HomeClientProps) {
     // Use environment variable for API URL, fallback to relative path for production
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
 
+    const requestId = createRequestId()
+    const startedAt = performance.now()
+
     try {
-      const response = await fetch(`${apiUrl}/api/convert?save_to_db=false`, {
+      const response = await fetchWithTimeout(`${apiUrl}/api/convert?save_to_db=false`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'X-Request-ID': requestId,
+        },
       })
 
       if (!response.ok) {
@@ -121,6 +145,16 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       const blob = await response.blob()
       const tokenCountHeader = response.headers.get('X-Token-Count')
       const tokenCount = tokenCountHeader ? Number(tokenCountHeader) : null
+      const durationHeader = response.headers.get('X-Request-Duration-Ms')
+      const stageTimings = response.headers.get('X-Stage-Timings')
+      const clientDurationMs = Math.round(performance.now() - startedAt)
+
+      console.info('convert timings', {
+        requestId,
+        clientDurationMs,
+        serverDurationMs: durationHeader ? Number(durationHeader) : null,
+        stageTimings,
+      })
 
       setConvertedBlob(blob)
       setConvertedFilename(filename)
@@ -154,15 +188,26 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       return
     }
 
-    const formData = new FormData()
-    formData.append('file', selectedFile)
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
+    const requestId = createRequestId()
+    const startedAt = performance.now()
 
     setIsSharing(true)
     try {
-      const response = await fetch(`${apiUrl}/api/convert?save_to_db=true`, {
+      const markdownContent = await convertedBlob.text()
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('markdown_content', markdownContent)
+      if (convertedTokenCount !== null) {
+        formData.append('token_count', String(convertedTokenCount))
+      }
+
+      const response = await fetchWithTimeout(`${apiUrl}/api/specs/share`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'X-Request-ID': requestId,
+        },
       })
 
       if (!response.ok) {
@@ -176,7 +221,14 @@ export default function HomeClient({ starCount }: HomeClientProps) {
         throw new Error(message)
       }
 
-      const saveStatus = response.headers.get('X-Marketplace-Save-Status')
+      const body = await response.json()
+      const saveStatus = body?.status
+      const clientDurationMs = Math.round(performance.now() - startedAt)
+      console.info('share timings', {
+        requestId,
+        clientDurationMs,
+        serverDurationMs: body?.duration_ms ?? null,
+      })
       triggerDownload(convertedBlob, convertedFilename)
 
       if (saveStatus === 'created') {

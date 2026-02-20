@@ -69,6 +69,8 @@ PORT=8000
 # Optional (defaults provided)
 DATABASE_PATH=/app/backend/data/apiingest.db  # SQLite fallback if DATABASE_URL not set
 LOG_LEVEL=INFO
+WEB_CONCURRENCY=1
+MAX_UPLOAD_BYTES=10485760
 ```
 
 **Important Notes**:
@@ -187,6 +189,8 @@ PORT=8000
 DATABASE_PATH=/app/backend/data/apiingest.db
 LOG_LEVEL=INFO
 PYTHONUNBUFFERED=1
+WEB_CONCURRENCY=1
+MAX_UPLOAD_BYTES=10485760
 ```
 
 ### Variable Descriptions
@@ -219,7 +223,7 @@ The Dockerfile uses a multi-stage build:
    - Configures supervisord to manage both processes
 
 3. **Runtime**: Both services start via supervisord
-   - Backend: `uvicorn main:app --host 0.0.0.0 --port 8000`
+   - Backend: `uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-1}`
    - Frontend: `npm start` (Next.js production server)
 
 ## Custom Domains (Optional)
@@ -324,6 +328,9 @@ Monitor in Koyeb dashboard:
 
 After deploying a fix, verify that `/api/convert` responses include:
 
+- `X-Request-ID`
+- `X-Request-Duration-Ms`
+- `X-Stage-Timings` (JSON map with `read_ms`, `write_ms`, `convert_ms`, `token_ms`, `db_ms`)
 - `X-Token-Count`
 - `X-Marketplace-Save-Status` (`skipped`, `created`, `exists`, `failed`)
 - `X-Marketplace-Spec-Id` (when available)

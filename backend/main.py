@@ -4,18 +4,23 @@ FastAPI Backend for OpenAPI to Markdown Converter
 Handles file uploads and returns converted markdown files
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Query, Form, Request
 from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from contextlib import asynccontextmanager
 import io
 import os
 import tempfile
+import time
+import json
+import yaml
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+from uuid import uuid4
 from transformation import OpenAPIToMarkdown
 import httpx
 import logging
@@ -36,6 +41,66 @@ from schemas.api_spec import (
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+UPLOAD_CHUNK_SIZE = int(os.getenv("UPLOAD_CHUNK_SIZE", str(1024 * 1024)))
+
+
+async def write_upload_to_temp(
+    upload: UploadFile,
+    suffix: str,
+    max_bytes: int,
+) -> tuple[str, int, float, float]:
+    """Write an uploaded file to disk in chunks and return timings."""
+    temp_input_path = ""
+    total_bytes = 0
+    read_seconds = 0.0
+    write_seconds = 0.0
+
+    tmp_dir = os.getenv("TMPDIR")
+    if tmp_dir:
+        Path(tmp_dir).mkdir(parents=True, exist_ok=True)
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            suffix=suffix,
+            delete=False,
+            dir=tmp_dir or None,
+        ) as temp_input:
+            temp_input_path = temp_input.name
+            while True:
+                read_start = time.perf_counter()
+                chunk = await upload.read(UPLOAD_CHUNK_SIZE)
+                read_seconds += time.perf_counter() - read_start
+                if not chunk:
+                    break
+
+                total_bytes += len(chunk)
+                if total_bytes > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large. Max size is {max_bytes // (1024 * 1024)} MB.",
+                    )
+
+                write_start = time.perf_counter()
+                temp_input.write(chunk)
+                write_seconds += time.perf_counter() - write_start
+    except Exception:
+        if temp_input_path and Path(temp_input_path).exists():
+            Path(temp_input_path).unlink()
+        raise
+
+    await upload.seek(0)
+    return temp_input_path, total_bytes, read_seconds, write_seconds
+
+
+def load_openapi_spec(path: str, file_extension: str) -> Dict[str, Any]:
+    """Load OpenAPI spec as dict from a file path."""
+    with open(path, "r", encoding="utf-8") as f:
+        if file_extension in [".yaml", ".yml"]:
+            return yaml.safe_load(f) or {}
+        return json.load(f)
 
 
 def estimate_token_count(text: str, model: str = "gpt-4") -> int:
@@ -90,7 +155,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Token-Count", "X-Marketplace-Save-Status", "X-Marketplace-Spec-Id"],
+    expose_headers=[
+        "X-Request-ID",
+        "X-Request-Duration-Ms",
+        "X-Stage-Timings",
+        "X-Token-Count",
+        "X-Marketplace-Save-Status",
+        "X-Marketplace-Spec-Id",
+    ],
 )
 
 
@@ -181,6 +253,7 @@ async def get_github_stats():
 
 @app.post("/api/convert")
 async def convert_openapi(
+    request: Request,
     file: UploadFile = File(...),
     save_to_db: bool = Query(True, description="Save conversion to database"),
     db: Session = Depends(get_db)
@@ -196,132 +269,224 @@ async def convert_openapi(
     Returns:
         Markdown file as downloadable response
     """
-    logger.info(f"Received conversion request for file: {file.filename}")
-    
-    # Validate file extension
-    allowed_extensions = ['.yaml', '.yml', '.json']
-    file_extension = Path(file.filename).suffix.lower()
-    
+    request_id = request.headers.get("X-Request-ID", str(uuid4()))
+    started_at = time.perf_counter()
+    stage_times: Dict[str, int] = {
+        "read_ms": 0,
+        "write_ms": 0,
+        "convert_ms": 0,
+        "token_ms": 0,
+        "db_ms": 0,
+    }
+    temp_input_path = ""
+
+    logger.info("Received conversion request id=%s file=%s", request_id, file.filename)
+
+    allowed_extensions = [".yaml", ".yml", ".json"]
+    safe_filename = file.filename or "upload.json"
+    file_extension = Path(safe_filename).suffix.lower()
+
     if file_extension not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}"
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}",
         )
-    
-    try:
-        # Read uploaded file content
-        content = await file.read()
-        
-        # Create temporary files for processing
-        with tempfile.NamedTemporaryFile(
-            mode='wb',
-            suffix=file_extension,
-            delete=False
-        ) as temp_input:
-            temp_input.write(content)
-            temp_input_path = temp_input.name
-        
-        try:
-            # Convert using the transformation module
-            converter = OpenAPIToMarkdown(temp_input_path)
-            markdown_content = converter.convert()
-            token_count = estimate_token_count(markdown_content)
-            
-            # Create output filename
-            output_filename = Path(file.filename).stem + '.md'
-            
-            marketplace_save_status = "skipped"
-            marketplace_spec_id = ""
 
-            # Save to database if requested
-            if save_to_db:
-                try:
-                    spec_info = converter.spec.get('info', {})
-                    
-                    # Extract tag names from OpenAPI tags (which are objects with 'name' field)
-                    raw_tags = converter.spec.get('tags', [])
-                    tag_names = []
-                    if isinstance(raw_tags, list):
-                        for tag in raw_tags[:5]:  # Limit to 5 tags
-                            if isinstance(tag, dict) and 'name' in tag:
-                                tag_names.append(tag['name'])
-                            elif isinstance(tag, str):
-                                tag_names.append(tag)
-                    
-                    spec_data = SpecCreate(
-                        name=spec_info.get('title', 'Untitled API'),
-                        version=spec_info.get('version', '1.0.0'),
-                        provider=spec_info.get('x-providerName') or spec_info.get('contact', {}).get('name'),
-                        original_filename=file.filename,
-                        original_format='yaml' if file_extension in ['.yaml', '.yml'] else 'json',
-                        original_content=content.decode('utf-8'),
-                        markdown_content=markdown_content,
-                        token_count=token_count,
-                        file_size_bytes=len(content),
-                        tags=tag_names
-                    )
-                    
-                    # Check if spec already exists
-                    existing_spec = crud.get_spec_by_name_version(
-                        db, spec_data.name, spec_data.version
-                    )
-                    
-                    if not existing_spec:
-                        db_spec = crud.create_spec(db, spec_data)
-                        logger.info(f"✅ Saved spec to database: ID={db_spec.id}")
-                        marketplace_save_status = "created"
-                        marketplace_spec_id = str(db_spec.id)
-                    else:
-                        logger.info(f"ℹ️ Spec already exists in database: ID={existing_spec.id}")
-                        marketplace_save_status = "exists"
-                        marketplace_spec_id = str(existing_spec.id)
-                        
-                except IntegrityError as e:
-                    logger.warning(f"⚠️ Could not save to database (duplicate?): {e}")
+    try:
+        temp_input_path, file_size, read_seconds, write_seconds = await write_upload_to_temp(
+            file,
+            file_extension,
+            MAX_UPLOAD_BYTES,
+        )
+        stage_times["read_ms"] = int(read_seconds * 1000)
+        stage_times["write_ms"] = int(write_seconds * 1000)
+
+        converter = OpenAPIToMarkdown(temp_input_path)
+
+        convert_started = time.perf_counter()
+        markdown_content = await run_in_threadpool(converter.convert)
+        stage_times["convert_ms"] = int((time.perf_counter() - convert_started) * 1000)
+
+        token_started = time.perf_counter()
+        token_count = await run_in_threadpool(estimate_token_count, markdown_content)
+        stage_times["token_ms"] = int((time.perf_counter() - token_started) * 1000)
+
+        output_filename = Path(safe_filename).stem + ".md"
+        marketplace_save_status = "skipped"
+        marketplace_spec_id = ""
+
+        if save_to_db:
+            db_started = time.perf_counter()
+            try:
+                spec_info = converter.spec.get("info", {})
+                raw_tags = converter.spec.get("tags", [])
+                tag_names = []
+                if isinstance(raw_tags, list):
+                    for tag in raw_tags[:5]:
+                        if isinstance(tag, dict) and "name" in tag:
+                            tag_names.append(tag["name"])
+                        elif isinstance(tag, str):
+                            tag_names.append(tag)
+
+                original_content = Path(temp_input_path).read_text(encoding="utf-8")
+                spec_data = SpecCreate(
+                    name=spec_info.get("title", "Untitled API"),
+                    version=spec_info.get("version", "1.0.0"),
+                    provider=spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name"),
+                    original_filename=safe_filename,
+                    original_format="yaml" if file_extension in [".yaml", ".yml"] else "json",
+                    original_content=original_content,
+                    markdown_content=markdown_content,
+                    token_count=token_count,
+                    file_size_bytes=file_size,
+                    tags=tag_names,
+                )
+
+                existing_spec = crud.get_spec_by_name_version(db, spec_data.name, spec_data.version)
+                if not existing_spec:
+                    db_spec = crud.create_spec(db, spec_data)
+                    logger.info("Saved spec to database id=%s request_id=%s", db_spec.id, request_id)
+                    marketplace_save_status = "created"
+                    marketplace_spec_id = str(db_spec.id)
+                else:
+                    logger.info("Spec already exists id=%s request_id=%s", existing_spec.id, request_id)
                     marketplace_save_status = "exists"
-                except Exception as e:
-                    logger.error(f"⚠️ Error saving to database: {e}")
-                    marketplace_save_status = "failed"
-                    # Continue with conversion even if database save fails
-            
-            # Create a BytesIO object for the response
-            markdown_bytes = io.BytesIO(markdown_content.encode('utf-8'))
-            
-            # Clean up temporary input file
-            Path(temp_input_path).unlink()
-            
-            logger.info(f"Successfully converted {file.filename} to {output_filename}")
-            
-            # Return markdown file as downloadable response
-            return StreamingResponse(
-                markdown_bytes,
-                media_type="text/markdown",
-                headers={
-                    "Content-Disposition": f"attachment; filename={output_filename}",
-                    "X-Token-Count": str(token_count),
-                    "X-Marketplace-Save-Status": marketplace_save_status,
-                    "X-Marketplace-Spec-Id": marketplace_spec_id,
-                }
-            )
-            
-        except Exception as e:
-            # Clean up on error
-            logger.error(f"Conversion error: {str(e)}")
-            if Path(temp_input_path).exists():
-                Path(temp_input_path).unlink()
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error converting file: {str(e)}"
-            )
-    
+                    marketplace_spec_id = str(existing_spec.id)
+            except IntegrityError as e:
+                logger.warning("Could not save spec (duplicate) request_id=%s err=%s", request_id, e)
+                marketplace_save_status = "exists"
+            except Exception as e:
+                logger.error("Error saving spec request_id=%s err=%s", request_id, e)
+                marketplace_save_status = "failed"
+            finally:
+                stage_times["db_ms"] = int((time.perf_counter() - db_started) * 1000)
+
+        total_ms = int((time.perf_counter() - started_at) * 1000)
+        logger.info(
+            "Converted file request_id=%s file=%s size_bytes=%s timings=%s total_ms=%s",
+            request_id,
+            safe_filename,
+            file_size,
+            stage_times,
+            total_ms,
+        )
+
+        return Response(
+            content=markdown_content,
+            media_type="text/markdown",
+            headers={
+                "Content-Disposition": f"attachment; filename={output_filename}",
+                "X-Request-ID": request_id,
+                "X-Request-Duration-Ms": str(total_ms),
+                "X-Stage-Timings": json.dumps(stage_times, separators=(",", ":")),
+                "X-Token-Count": str(token_count),
+                "X-Marketplace-Save-Status": marketplace_save_status,
+                "X-Marketplace-Spec-Id": marketplace_spec_id,
+            },
+        )
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error processing upload: {str(e)}")
+        logger.error("Error processing upload request_id=%s err=%s", request_id, e)
+        raise HTTPException(status_code=500, detail=f"Error processing upload: {str(e)}")
+    finally:
+        if temp_input_path and Path(temp_input_path).exists():
+            Path(temp_input_path).unlink()
+
+
+@app.post("/api/specs/share")
+async def share_converted_spec(
+    request: Request,
+    file: UploadFile = File(...),
+    markdown_content: str = Form(...),
+    token_count: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Save a previously converted markdown + original spec without re-running conversion.
+    """
+    request_id = request.headers.get("X-Request-ID", str(uuid4()))
+    started_at = time.perf_counter()
+    temp_input_path = ""
+
+    allowed_extensions = [".yaml", ".yml", ".json"]
+    safe_filename = file.filename or "upload.json"
+    file_extension = Path(safe_filename).suffix.lower()
+    if file_extension not in allowed_extensions:
         raise HTTPException(
-            status_code=500,
-            detail=f"Error processing upload: {str(e)}"
+            status_code=400,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}",
         )
+
+    try:
+        temp_input_path, file_size, _, _ = await write_upload_to_temp(
+            file,
+            file_extension,
+            MAX_UPLOAD_BYTES,
+        )
+        spec = load_openapi_spec(temp_input_path, file_extension)
+        spec_info = spec.get("info", {})
+
+        raw_tags = spec.get("tags", [])
+        tag_names = []
+        if isinstance(raw_tags, list):
+            for tag in raw_tags[:5]:
+                if isinstance(tag, dict) and "name" in tag:
+                    tag_names.append(tag["name"])
+                elif isinstance(tag, str):
+                    tag_names.append(tag)
+
+        resolved_token_count = token_count
+        if resolved_token_count is None:
+            resolved_token_count = await run_in_threadpool(estimate_token_count, markdown_content)
+
+        original_content = Path(temp_input_path).read_text(encoding="utf-8")
+        spec_data = SpecCreate(
+            name=spec_info.get("title", "Untitled API"),
+            version=spec_info.get("version", "1.0.0"),
+            provider=spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name"),
+            original_filename=safe_filename,
+            original_format="yaml" if file_extension in [".yaml", ".yml"] else "json",
+            original_content=original_content,
+            markdown_content=markdown_content,
+            token_count=resolved_token_count,
+            file_size_bytes=file_size,
+            tags=tag_names,
+        )
+
+        existing_spec = crud.get_spec_by_name_version(db, spec_data.name, spec_data.version)
+        if existing_spec:
+            status = "exists"
+            spec_id = existing_spec.id
+        else:
+            db_spec = crud.create_spec(db, spec_data)
+            status = "created"
+            spec_id = db_spec.id
+
+        total_ms = int((time.perf_counter() - started_at) * 1000)
+        logger.info(
+            "Shared converted spec request_id=%s status=%s spec_id=%s total_ms=%s",
+            request_id,
+            status,
+            spec_id,
+            total_ms,
+        )
+        return {
+            "status": status,
+            "spec_id": str(spec_id),
+            "request_id": request_id,
+            "duration_ms": total_ms,
+        }
+    except HTTPException:
+        raise
+    except IntegrityError:
+        return {"status": "exists", "spec_id": "", "request_id": request_id}
+    except Exception as e:
+        logger.error("Error sharing converted spec request_id=%s err=%s", request_id, e)
+        raise HTTPException(status_code=500, detail=f"Failed to share spec: {str(e)}")
+    finally:
+        if temp_input_path and Path(temp_input_path).exists():
+            Path(temp_input_path).unlink()
 
 
 @app.get("/health")

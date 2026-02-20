@@ -5,7 +5,7 @@ services:
   # Backend Service (FastAPI)
   - name: apiingest-backend
     type: web
-    instance_type: nano
+    instance_type: micro
     ports:
       - port: 8000
         protocol: http
@@ -15,13 +15,17 @@ services:
     build:
       type: buildpack
       working_directory: backend
-    run_command: uvicorn main:app --host 0.0.0.0 --port 8000
+    run_command: sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-1}"
     env:
       - name: PORT
         value: "8000"
       - name: ALLOWED_ORIGINS
         # Update this after frontend deployment
         value: "https://your-frontend-url.koyeb.app"
+      - name: WEB_CONCURRENCY
+        value: "1"
+      - name: MAX_UPLOAD_BYTES
+        value: "10485760"
     health_check:
       http:
         path: /health
@@ -34,7 +38,7 @@ services:
   # Frontend Service (Next.js)
   - name: apiingest-frontend
     type: web
-    instance_type: nano
+    instance_type: micro
     ports:
       - port: 3000
         protocol: http
