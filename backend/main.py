@@ -47,9 +47,12 @@ MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
 UPLOAD_CHUNK_SIZE = int(os.getenv("UPLOAD_CHUNK_SIZE", str(1024 * 1024)))
 JOB_TTL_SECONDS = int(os.getenv("CONVERSION_JOB_TTL_SECONDS", "3600"))
 JOB_MAX_ITEMS = int(os.getenv("CONVERSION_JOB_MAX_ITEMS", "200"))
+CONVERSION_MAX_CONCURRENT = int(os.getenv("CONVERSION_MAX_CONCURRENT", "1"))
+CONVERSION_MAX_QUEUE = int(os.getenv("CONVERSION_MAX_QUEUE", "20"))
 
 conversion_jobs: Dict[str, Dict[str, Any]] = {}
 job_lock = asyncio.Lock()
+worker_semaphore = asyncio.Semaphore(max(CONVERSION_MAX_CONCURRENT, 1))
 
 
 async def write_upload_to_temp(
@@ -172,106 +175,113 @@ async def process_conversion_job(
     started_at = time.perf_counter()
     converter: Optional[OpenAPIToMarkdown] = None
 
-    async with job_lock:
-        job = conversion_jobs.get(job_id)
-        if not job:
-            return
-        job["status"] = "processing"
-        job["stage"] = "init"
-        job["updated_at"] = now_iso()
-        job["updated_at_ts"] = now_ts()
-        request_id = job["request_id"]
-        save_to_db = bool(job.get("save_to_db", False))
-
     try:
-        init_started = time.perf_counter()
-        converter = await run_in_threadpool(OpenAPIToMarkdown, temp_input_path)
-        init_ms = int((time.perf_counter() - init_started) * 1000)
-
         async with job_lock:
             job = conversion_jobs.get(job_id)
             if not job:
                 return
-            job["stage"] = "convert"
-            job["timings"]["init_ms"] = init_ms
-            job["updated_at"] = now_iso()
-            job["updated_at_ts"] = now_ts()
+            request_id = job["request_id"]
+            save_to_db = bool(job.get("save_to_db", False))
 
-        convert_started = time.perf_counter()
-        markdown_content = await run_in_threadpool(converter.convert)
-        convert_ms = int((time.perf_counter() - convert_started) * 1000)
-
-        async with job_lock:
-            job = conversion_jobs.get(job_id)
-            if not job:
-                return
-            job["stage"] = "tokenize"
-            job["timings"]["convert_ms"] = convert_ms
-            job["updated_at"] = now_iso()
-            job["updated_at_ts"] = now_ts()
-
-        token_started = time.perf_counter()
-        token_count = await run_in_threadpool(estimate_token_count, markdown_content)
-        token_ms = int((time.perf_counter() - token_started) * 1000)
-
-        marketplace_save_status = "skipped"
-        marketplace_spec_id = ""
-        db_ms = 0
-
-        if save_to_db and converter is not None:
+        # Limit CPU-heavy conversion work to a strict number of workers.
+        async with worker_semaphore:
             async with job_lock:
                 job = conversion_jobs.get(job_id)
                 if not job:
                     return
-                job["stage"] = "db_save"
+                job["status"] = "processing"
+                job["stage"] = "init"
                 job["updated_at"] = now_iso()
                 job["updated_at_ts"] = now_ts()
 
-            db_started = time.perf_counter()
-            db = SessionLocal()
-            try:
-                spec_info = converter.spec.get("info", {})
-                raw_tags = converter.spec.get("tags", [])
-                tag_names = []
-                if isinstance(raw_tags, list):
-                    for tag in raw_tags[:5]:
-                        if isinstance(tag, dict) and "name" in tag:
-                            tag_names.append(tag["name"])
-                        elif isinstance(tag, str):
-                            tag_names.append(tag)
+            init_started = time.perf_counter()
+            converter = await run_in_threadpool(OpenAPIToMarkdown, temp_input_path)
+            init_ms = int((time.perf_counter() - init_started) * 1000)
 
-                original_content = Path(temp_input_path).read_text(encoding="utf-8")
-                spec_data = SpecCreate(
-                    name=spec_info.get("title", "Untitled API"),
-                    version=spec_info.get("version", "1.0.0"),
-                    provider=spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name"),
-                    original_filename=safe_filename,
-                    original_format="yaml" if file_extension in [".yaml", ".yml"] else "json",
-                    original_content=original_content,
-                    markdown_content=markdown_content,
-                    token_count=token_count,
-                    file_size_bytes=file_size,
-                    tags=tag_names,
-                )
-                existing_spec = crud.get_spec_by_name_version(db, spec_data.name, spec_data.version)
-                if not existing_spec:
-                    db_spec = crud.create_spec(db, spec_data)
-                    marketplace_save_status = "created"
-                    marketplace_spec_id = str(db_spec.id)
-                else:
+            async with job_lock:
+                job = conversion_jobs.get(job_id)
+                if not job:
+                    return
+                job["stage"] = "convert"
+                job["timings"]["init_ms"] = init_ms
+                job["updated_at"] = now_iso()
+                job["updated_at_ts"] = now_ts()
+
+            convert_started = time.perf_counter()
+            markdown_content = await run_in_threadpool(converter.convert)
+            convert_ms = int((time.perf_counter() - convert_started) * 1000)
+
+            async with job_lock:
+                job = conversion_jobs.get(job_id)
+                if not job:
+                    return
+                job["stage"] = "tokenize"
+                job["timings"]["convert_ms"] = convert_ms
+                job["updated_at"] = now_iso()
+                job["updated_at_ts"] = now_ts()
+
+            token_started = time.perf_counter()
+            token_count = await run_in_threadpool(estimate_token_count, markdown_content)
+            token_ms = int((time.perf_counter() - token_started) * 1000)
+
+            marketplace_save_status = "skipped"
+            marketplace_spec_id = ""
+            db_ms = 0
+
+            if save_to_db and converter is not None:
+                async with job_lock:
+                    job = conversion_jobs.get(job_id)
+                    if not job:
+                        return
+                    job["stage"] = "db_save"
+                    job["updated_at"] = now_iso()
+                    job["updated_at_ts"] = now_ts()
+
+                db_started = time.perf_counter()
+                db = SessionLocal()
+                try:
+                    spec_info = converter.spec.get("info", {})
+                    raw_tags = converter.spec.get("tags", [])
+                    tag_names = []
+                    if isinstance(raw_tags, list):
+                        for tag in raw_tags[:5]:
+                            if isinstance(tag, dict) and "name" in tag:
+                                tag_names.append(tag["name"])
+                            elif isinstance(tag, str):
+                                tag_names.append(tag)
+
+                    original_content = Path(temp_input_path).read_text(encoding="utf-8")
+                    spec_data = SpecCreate(
+                        name=spec_info.get("title", "Untitled API"),
+                        version=spec_info.get("version", "1.0.0"),
+                        provider=spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name"),
+                        original_filename=safe_filename,
+                        original_format="yaml" if file_extension in [".yaml", ".yml"] else "json",
+                        original_content=original_content,
+                        markdown_content=markdown_content,
+                        token_count=token_count,
+                        file_size_bytes=file_size,
+                        tags=tag_names,
+                    )
+                    existing_spec = crud.get_spec_by_name_version(db, spec_data.name, spec_data.version)
+                    if not existing_spec:
+                        db_spec = crud.create_spec(db, spec_data)
+                        marketplace_save_status = "created"
+                        marketplace_spec_id = str(db_spec.id)
+                    else:
+                        marketplace_save_status = "exists"
+                        marketplace_spec_id = str(existing_spec.id)
+                except IntegrityError:
                     marketplace_save_status = "exists"
-                    marketplace_spec_id = str(existing_spec.id)
-            except IntegrityError:
-                marketplace_save_status = "exists"
-            except Exception as e:
-                logger.error("Error saving spec in job request_id=%s err=%s", request_id, e)
-                marketplace_save_status = "failed"
-            finally:
-                db.close()
-                db_ms = int((time.perf_counter() - db_started) * 1000)
+                except Exception as e:
+                    logger.error("Error saving spec in job request_id=%s err=%s", request_id, e)
+                    marketplace_save_status = "failed"
+                finally:
+                    db.close()
+                    db_ms = int((time.perf_counter() - db_started) * 1000)
 
-        total_ms = int((time.perf_counter() - started_at) * 1000)
-        output_filename = Path(safe_filename).stem + ".md"
+            total_ms = int((time.perf_counter() - started_at) * 1000)
+            output_filename = Path(safe_filename).stem + ".md"
         async with job_lock:
             job = conversion_jobs.get(job_id)
             if not job:
@@ -502,10 +512,24 @@ async def convert_openapi(
         job_id = str(uuid4())
         async with job_lock:
             await cleanup_jobs_locked()
+            active_or_queued_jobs = sum(
+                1
+                for existing_job in conversion_jobs.values()
+                if existing_job.get("status") in {"queued", "processing"}
+            )
+            if active_or_queued_jobs >= max(CONVERSION_MAX_QUEUE, 1):
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Conversion queue is full. Please retry shortly. "
+                        f"active_or_queued={active_or_queued_jobs}, limit={CONVERSION_MAX_QUEUE}"
+                    ),
+                    headers={"Retry-After": "5"},
+                )
             conversion_jobs[job_id] = {
                 "job_id": job_id,
                 "status": "queued",
-                "stage": "queued",
+                "stage": "waiting_worker",
                 "request_id": request_id,
                 "file_name": safe_filename,
                 "file_size_bytes": file_size,
@@ -547,6 +571,7 @@ async def convert_openapi(
             content={
                 "job_id": job_id,
                 "status": "queued",
+                "stage": "waiting_worker",
                 "request_id": request_id,
                 "message": "Conversion job queued. Poll /api/convert/{job_id} for status.",
             },
@@ -570,6 +595,15 @@ async def get_conversion_job_status(job_id: str):
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         snapshot = _job_snapshot(job)
+        if job.get("status") == "queued":
+            this_created = job.get("created_at_ts", 0)
+            pending_ahead = sum(
+                1
+                for existing_job in conversion_jobs.values()
+                if existing_job.get("status") in {"queued", "processing"}
+                and existing_job.get("created_at_ts", 0) < this_created
+            )
+            snapshot["pending_ahead"] = pending_ahead
 
     return snapshot
 

@@ -71,6 +71,8 @@ DATABASE_PATH=/app/backend/data/apiingest.db  # SQLite fallback if DATABASE_URL 
 LOG_LEVEL=INFO
 WEB_CONCURRENCY=1
 MAX_UPLOAD_BYTES=10485760
+CONVERSION_MAX_CONCURRENT=1
+CONVERSION_MAX_QUEUE=20
 ```
 
 **Important Notes**:
@@ -191,6 +193,8 @@ LOG_LEVEL=INFO
 PYTHONUNBUFFERED=1
 WEB_CONCURRENCY=1
 MAX_UPLOAD_BYTES=10485760
+CONVERSION_MAX_CONCURRENT=1
+CONVERSION_MAX_QUEUE=20
 ```
 
 ### Variable Descriptions
@@ -346,6 +350,11 @@ Quick check in browser:
 4. Confirm repeated polling to `GET /api/convert/{job_id}`.
 5. Confirm download call to `GET /api/convert/{job_id}/download` and inspect response headers.
 6. Confirm the UI shows token count and correct share outcome message.
+7. Run a burst enqueue test over your queue limit and verify extra requests return `503` quickly with `Retry-After`.
+
+Suggested overload defaults by instance type:
+- `micro`: `CONVERSION_MAX_CONCURRENT=1`, `CONVERSION_MAX_QUEUE=10-20`
+- `small`: `CONVERSION_MAX_CONCURRENT=2`, `CONVERSION_MAX_QUEUE=25-50`
 
 ### Build Failures
 

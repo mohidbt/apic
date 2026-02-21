@@ -174,8 +174,20 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       })
 
       if (response.status !== 202) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Conversion failed')
+        let message = 'Conversion failed'
+        try {
+          const errorData = await response.json()
+          message = errorData.detail || message
+        } catch {
+          // Ignore parse errors and keep fallback message.
+        }
+
+        if (response.status === 503) {
+          const retryAfter = response.headers.get('Retry-After')
+          const suffix = retryAfter ? ` Try again in ~${retryAfter}s.` : ' Please retry shortly.'
+          throw new Error(`Server is busy processing other conversions.${suffix}`)
+        }
+        throw new Error(message)
       }
 
       const enqueueBody = await response.json()
