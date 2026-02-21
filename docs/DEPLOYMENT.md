@@ -326,20 +326,26 @@ Monitor in Koyeb dashboard:
 
 ### Verify Convert Headers (Token + Marketplace Status)
 
-After deploying a fix, verify that `/api/convert` responses include:
+After deploying the async conversion queue, verify this flow:
 
-- `X-Request-ID`
-- `X-Request-Duration-Ms`
-- `X-Stage-Timings` (JSON map with `read_ms`, `write_ms`, `convert_ms`, `token_ms`, `db_ms`)
-- `X-Token-Count`
-- `X-Marketplace-Save-Status` (`skipped`, `created`, `exists`, `failed`)
-- `X-Marketplace-Spec-Id` (when available)
+1. `POST /api/convert` returns `202` with JSON containing `job_id`.
+2. `GET /api/convert/{job_id}` transitions through `queued` → `processing` → `completed` (or `failed`).
+3. `GET /api/convert/{job_id}/download` returns the markdown file when completed.
+4. Download response headers include:
+   - `X-Request-ID`
+   - `X-Request-Duration-Ms`
+   - `X-Stage-Timings` (JSON map with `read_ms`, `write_ms`, `init_ms`, `convert_ms`, `token_ms`, `db_ms`, `total_ms`)
+   - `X-Token-Count`
+   - `X-Marketplace-Save-Status` (`skipped`, `created`, `exists`, `failed`)
+   - `X-Marketplace-Spec-Id` (when available)
 
 Quick check in browser:
 1. Open DevTools Network tab.
 2. Convert a file from the landing page.
-3. Click the `POST /api/convert` request and confirm those response headers exist.
-4. Confirm the UI shows token count and correct share outcome message.
+3. Confirm `POST /api/convert` returns `202` and a `job_id`.
+4. Confirm repeated polling to `GET /api/convert/{job_id}`.
+5. Confirm download call to `GET /api/convert/{job_id}/download` and inspect response headers.
+6. Confirm the UI shows token count and correct share outcome message.
 
 ### Build Failures
 
@@ -395,6 +401,15 @@ Quick check in browser:
 - Monitor memory usage in dashboard
 - Check for memory leaks in application logs
 - Consider separating frontend/backend if needed
+
+### Conversion Jobs (Async Queue)
+
+The conversion pipeline runs in an in-memory background queue:
+
+- `POST /api/convert` enqueues work and returns quickly with `job_id`.
+- Job state is stored in backend memory only.
+- Jobs are lost on service restart/redeploy.
+- For high reliability, move job state to persistent storage in a later iteration.
 
 ## Scaling
 

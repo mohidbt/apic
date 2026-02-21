@@ -40,6 +40,52 @@ export default function HomeClient({ starCount }: HomeClientProps) {
     }
   }
 
+  const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
+  const pollConversionJob = async (apiUrl: string, jobId: string, requestId: string) => {
+    const maxPollMs = 10 * 60 * 1000
+    const pollStart = performance.now()
+    let attempt = 0
+
+    while (performance.now() - pollStart < maxPollMs) {
+      const statusResponse = await fetchWithTimeout(`${apiUrl}/api/convert/${jobId}`, {
+        method: 'GET',
+        headers: {
+          'X-Request-ID': requestId,
+        },
+      })
+
+      if (!statusResponse.ok) {
+        let message = 'Failed to check conversion status'
+        try {
+          const errorData = await statusResponse.json()
+          message = errorData.detail || message
+        } catch {
+          // Ignore parse errors and use fallback message.
+        }
+        throw new Error(message)
+      }
+
+      const statusBody = await statusResponse.json()
+      const status = statusBody?.status
+      const stage = statusBody?.stage
+      console.info('convert job status', { requestId, jobId, status, stage, timings: statusBody?.timings })
+
+      if (status === 'completed') {
+        return statusBody
+      }
+      if (status === 'failed') {
+        throw new Error(statusBody?.error || 'Conversion job failed')
+      }
+
+      const waitMs = Math.min(1000 * Math.pow(1.5, attempt), 5000)
+      attempt += 1
+      await sleep(waitMs)
+    }
+
+    throw new Error('Conversion timed out while waiting for background job')
+  }
+
   const triggerDownload = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -127,13 +173,32 @@ export default function HomeClient({ starCount }: HomeClientProps) {
         },
       })
 
-      if (!response.ok) {
+      if (response.status !== 202) {
         const errorData = await response.json()
         throw new Error(errorData.detail || 'Conversion failed')
       }
 
-      // Get the filename from the response headers or create one
-      const contentDisposition = response.headers.get('Content-Disposition')
+      const enqueueBody = await response.json()
+      const jobId = enqueueBody?.job_id
+      if (!jobId) {
+        throw new Error('Missing conversion job id from server')
+      }
+      toast.info('Conversion queued. Processing in background...')
+
+      await pollConversionJob(apiUrl, jobId, requestId)
+
+      const downloadResponse = await fetchWithTimeout(`${apiUrl}/api/convert/${jobId}/download`, {
+        method: 'GET',
+        headers: {
+          'X-Request-ID': requestId,
+        },
+      })
+      if (!downloadResponse.ok) {
+        const errorData = await downloadResponse.json()
+        throw new Error(errorData.detail || 'Failed to download converted file')
+      }
+
+      const contentDisposition = downloadResponse.headers.get('Content-Disposition')
       let filename = 'converted.md'
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?(.+)"?/)
@@ -142,15 +207,16 @@ export default function HomeClient({ starCount }: HomeClientProps) {
         }
       }
 
-      const blob = await response.blob()
-      const tokenCountHeader = response.headers.get('X-Token-Count')
+      const blob = await downloadResponse.blob()
+      const tokenCountHeader = downloadResponse.headers.get('X-Token-Count')
       const tokenCount = tokenCountHeader ? Number(tokenCountHeader) : null
-      const durationHeader = response.headers.get('X-Request-Duration-Ms')
-      const stageTimings = response.headers.get('X-Stage-Timings')
+      const durationHeader = downloadResponse.headers.get('X-Request-Duration-Ms')
+      const stageTimings = downloadResponse.headers.get('X-Stage-Timings')
       const clientDurationMs = Math.round(performance.now() - startedAt)
 
       console.info('convert timings', {
         requestId,
+        jobId,
         clientDurationMs,
         serverDurationMs: durationHeader ? Number(durationHeader) : null,
         stageTimings,
