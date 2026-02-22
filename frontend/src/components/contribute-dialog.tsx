@@ -42,7 +42,7 @@ export function ContributeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <div className="mb-3 flex items-center gap-2 text-green-600">
+          <div className="mb-3 flex items-center gap-2 text-primary">
             <CheckCircle2 className="h-5 w-5" />
             <span className="text-sm font-medium">Conversion complete</span>
           </div>

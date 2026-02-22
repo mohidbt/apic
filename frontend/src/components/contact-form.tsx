@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 const contactSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -18,7 +18,6 @@ const contactSchema = z.object({
 type ContactFormData = z.infer<typeof contactSchema>
 
 export function ContactForm() {
-  const { toast } = useToast()
   const {
     register,
     handleSubmit,
@@ -45,19 +44,19 @@ export function ContactForm() {
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
         <Input id="name" {...register("name")} placeholder="Your name" />
-        {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+        {errors.name && <p className="text-sm font-medium text-destructive">{errors.name.message}</p>}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" type="email" {...register("email")} placeholder="your@email.com" />
-        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+        {errors.email && <p className="text-sm font-medium text-destructive">{errors.email.message}</p>}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="message">Message</Label>
         <Textarea id="message" {...register("message")} placeholder="Your message..." rows={4} />
-        {errors.message && <p className="text-sm text-destructive">{errors.message.message}</p>}
+        {errors.message && <p className="text-sm font-medium text-destructive">{errors.message.message}</p>}
       </div>
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
