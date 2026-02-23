@@ -977,8 +977,12 @@ async def frontend_root():
                 status_code=response.status_code
             )
     except Exception:
-        # Frontend not available (local dev), redirect to API docs
-        return RedirectResponse(url="/docs")
+        # Frontend not available yet (e.g. during deploy startup), avoid hard redirect to /docs
+        return Response(
+            content="Service is starting up. Please retry in a few seconds.",
+            media_type="text/plain",
+            status_code=503,
+        )
 
 
 @app.get("/{path:path}")
