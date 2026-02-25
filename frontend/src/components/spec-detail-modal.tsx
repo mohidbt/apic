@@ -8,7 +8,7 @@ import { Download, FileText, Code, Calendar, Package, User, Database, Hash } fro
 import { SpecDetail } from '@/types/api-spec'
 import { formatFileSize, formatDate, formatTokenCount, downloadMarkdown, downloadOriginal } from '@/lib/api'
 import { toast } from 'sonner'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 interface SpecDetailModalProps {
   spec: SpecDetail | null
@@ -18,6 +18,7 @@ interface SpecDetailModalProps {
 
 export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
   const [downloading, setDownloading] = useState<'markdown' | 'original' | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   if (!spec) return null
 
@@ -50,13 +51,18 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
+        onOverlayWheel={(event) => {
+          if (!scrollRef.current) return
+          event.preventDefault()
+          scrollRef.current.scrollBy({ top: event.deltaY })
+        }}
         className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border-2 transition-shadow duration-300 shadow-[0_18px_60px_-20px_rgba(0,160,0,0.55)] dark:shadow-[0_18px_60px_-20px_rgba(34,255,34,0.55)] hover:shadow-[0_25px_100px_-20px_rgba(0,160,0,0.75)] dark:hover:shadow-[0_25px_100px_-20px_rgba(34,255,34,0.75)]"
       >
         <DialogHeader className="pb-4 border-b">
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">{spec.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto pr-4">
           <div className="space-y-6 py-4">
             {/* Metadata Section */}
             <div className="grid grid-cols-2 gap-4">
