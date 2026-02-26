@@ -38,7 +38,7 @@
   --font-sans: monospace;
   --font-serif: monospace;
   --font-mono: monospace;
-  --radius: 0rem;
+  --radius: 0.5rem;
   --shadow-x: 0px;
   --shadow-y: 0px;
   --shadow-blur: 0px;
@@ -93,7 +93,7 @@
   --font-sans: monospace;
   --font-serif: monospace;
   --font-mono: monospace;
-  --radius: 0rem;
+  --radius: 0.5rem;
   --shadow-x: 0px;
   --shadow-y: 0px;
   --shadow-blur: 0px;
