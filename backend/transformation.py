@@ -322,12 +322,18 @@ class OpenAPIToMarkdown:
         curl_example = self._generate_curl_example(method, path, operation, base_url)
         
         # Build the block
+        operation_id = operation.get('operationId', '')
         lines = [
             "=" * 80,
             f"ENDPOINT: [{method_upper}] {path}",
+        ]
+        if operation_id:
+            lines.append(f"OPERATION_ID: {operation_id}")
+        lines.extend([
+            f"BASE_URL: {base_url}",
             f"TAGS: {', '.join(tags) if tags else 'none'}",
             f"SUMMARY: {summary}",
-        ]
+        ])
         
         if description and description != summary:
             lines.append(f"DESCRIPTION: {description}")
@@ -475,7 +481,7 @@ class OpenAPIToMarkdown:
         ]
         
         for schema_name in sorted(schemas.keys()):
-            schema = schemas[schema_name]
+            schema = self._dereference(schemas[schema_name])
             schema_type = schema.get('type', 'object')
             description = schema.get('description', '')
             
@@ -489,42 +495,176 @@ class OpenAPIToMarkdown:
         
         return '\n'.join(lines)
     
-    def convert(self) -> str:
-        """Main conversion method."""
-        # Get base URL for examples
+    def _get_base_url(self) -> str:
         servers = self.spec.get('servers', [])
-        base_url = servers[0].get('url', 'https://api.example.com') if servers else 'https://api.example.com'
-        
-        # Generate sections
+        return servers[0].get('url', 'https://api.example.com') if servers else 'https://api.example.com'
+
+    def convert(self) -> str:
+        """Main conversion method. Returns a single monolithic markdown string."""
+        base_url = self._get_base_url()
         header = self._generate_header()
         endpoints_by_tag = self._group_endpoints_by_tag()
         toc = self._generate_toc(endpoints_by_tag)
-        
-        # Generate endpoint blocks
-        endpoint_blocks = []
-        endpoint_blocks.append("\n## Endpoint Details\n")
-        
+
+        endpoint_blocks = ["\n## Endpoint Details\n"]
         for tag in sorted(endpoints_by_tag.keys()):
             endpoint_blocks.append(f"\n### Tag: {tag}\n")
             endpoints = endpoints_by_tag[tag]
-            
-            # Sort alphabetically
             sorted_endpoints = sorted(endpoints, key=lambda x: (x[1], x[0]))
-            
             for path, method, operation in sorted_endpoints:
                 tags = operation.get('tags', [tag])
                 block = self._format_endpoint(path, method, operation, tags, base_url)
                 endpoint_blocks.append(block)
-        
-        # Generate components appendix
+
         appendix = self._generate_components_appendix()
-        
-        # Combine all sections
         markdown = header + "\n" + toc + "\n" + ''.join(endpoint_blocks)
         if appendix:
             markdown += "\n" + appendix
-        
         return markdown
+
+    def convert_chunked(self) -> Dict[str, Any]:
+        """
+        Progressive-disclosure output: returns a dict with separately
+        addressable manifest, per-tag summaries, per-endpoint blocks,
+        and per-schema definitions.
+
+        Keys:
+          manifest  - str: title, version, base URLs, auth, tag→endpoint index
+          tags      - dict[str, str]: per-tag summary markdown
+          endpoints - dict[str, str]: keyed by operationId (or METHOD_path fallback)
+          schemas   - dict[str, str]: per-component schema markdown
+        """
+        base_url = self._get_base_url()
+        endpoints_by_tag = self._group_endpoints_by_tag()
+
+        manifest = self._generate_header() + "\n" + self._generate_toc(endpoints_by_tag)
+
+        tags_dict: Dict[str, str] = {}
+        endpoints_dict: Dict[str, str] = {}
+
+        for tag in sorted(endpoints_by_tag.keys()):
+            tag_lines = [f"## {tag}", ""]
+            endpoints = endpoints_by_tag[tag]
+            sorted_endpoints = sorted(endpoints, key=lambda x: (x[1], x[0]))
+
+            for path, method, operation in sorted_endpoints:
+                op_tags = operation.get('tags', [tag])
+                block = self._format_endpoint(path, method, operation, op_tags, base_url)
+
+                op_id = operation.get('operationId') or f"{method.upper()}_{path.replace('/', '_').strip('_')}"
+                endpoints_dict[op_id] = block
+
+                summary = operation.get('summary', operation.get('description', ''))
+                if len(summary) > 60:
+                    summary = summary[:60] + "..."
+                tag_lines.append(f"- **{method.upper()}** `{path}` ({op_id}) — {summary}")
+
+            tag_lines.append("")
+            tags_dict[tag] = "\n".join(tag_lines)
+
+        schemas_dict: Dict[str, str] = {}
+        for schema_name in sorted(self.components.get('schemas', {}).keys()):
+            schema = self._dereference(self.components['schemas'][schema_name])
+            schema_type = schema.get('type', 'object')
+            description = schema.get('description', '')
+            lines = [f"### {schema_name}", f"Type: {schema_type}"]
+            if description:
+                lines.append(f"Description: {description[:200]}{'...' if len(description) > 200 else ''}")
+            lines.append("")
+            lines.append(self._format_schema_inline(schema, indent=0))
+            lines.append("")
+            schemas_dict[schema_name] = "\n".join(lines)
+
+        return {
+            "manifest": manifest,
+            "tags": tags_dict,
+            "endpoints": endpoints_dict,
+            "schemas": schemas_dict,
+        }
+
+    def generate_tool_schemas(self) -> List[Dict[str, Any]]:
+        """
+        Emit an array of JSON-Schema tool definitions (one per endpoint),
+        compatible with OpenAI / Anthropic function-calling format.
+
+        Each tool has: name (operationId), description (summary),
+        and parameters (merged path + query params and request body).
+        """
+        tools: List[Dict[str, Any]] = []
+        paths = self.spec.get('paths', {})
+
+        for path, path_item in paths.items():
+            for method in ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']:
+                if method not in path_item:
+                    continue
+                operation = path_item[method]
+                op_id = operation.get('operationId') or f"{method.upper()}_{path.replace('/', '_').strip('_')}"
+                summary = operation.get('summary', operation.get('description', ''))
+
+                properties: Dict[str, Any] = {}
+                required: List[str] = []
+
+                for raw_param in operation.get('parameters', []):
+                    deref_param = self._dereference(raw_param)
+                    p_name = deref_param.get('name', '')
+                    p_schema = self._dereference(deref_param.get('schema', {}))
+                    p_in = deref_param.get('in', '')
+                    p_required = deref_param.get('required', p_in == 'path')
+                    desc = deref_param.get('description', '')
+
+                    param_prop: Dict[str, Any] = {}
+                    if p_schema.get('type'):
+                        param_prop['type'] = p_schema['type']
+                    if p_schema.get('enum'):
+                        param_prop['enum'] = p_schema['enum']
+                    if desc:
+                        param_prop['description'] = desc
+                    if p_schema.get('format'):
+                        param_prop['format'] = p_schema['format']
+                    if not param_prop.get('type'):
+                        param_prop['type'] = 'string'
+                    properties[p_name] = param_prop
+                    if p_required:
+                        required.append(p_name)
+
+                request_body = operation.get('requestBody', {})
+                if request_body:
+                    content = self._dereference(request_body.get('content', {}))
+                    json_content = content.get('application/json', {})
+                    body_schema = self._dereference(json_content.get('schema', {}))
+                    if body_schema.get('properties'):
+                        body_required = set(body_schema.get('required', []))
+                        for bp_name, bp_raw_schema in body_schema['properties'].items():
+                            bp_schema = self._dereference(bp_raw_schema)
+                            body_prop: Dict[str, Any] = {}
+                            if bp_schema.get('type'):
+                                body_prop['type'] = bp_schema['type']
+                            if bp_schema.get('enum'):
+                                body_prop['enum'] = bp_schema['enum']
+                            if bp_schema.get('description'):
+                                body_prop['description'] = bp_schema['description']
+                            if bp_schema.get('format'):
+                                body_prop['format'] = bp_schema['format']
+                            if not body_prop.get('type'):
+                                body_prop['type'] = 'string'
+                            if bp_name not in properties:
+                                properties[bp_name] = body_prop
+                            if bp_name in body_required and bp_name not in required:
+                                required.append(bp_name)
+
+                tool: Dict[str, Any] = {
+                    "name": op_id,
+                    "description": summary[:200] if summary else f"{method.upper()} {path}",
+                    "parameters": {
+                        "type": "object",
+                        "properties": properties,
+                    },
+                }
+                if required:
+                    tool["parameters"]["required"] = required
+                tools.append(tool)
+
+        return tools
     
     def save(self, content: str):
         """Save markdown to file."""
@@ -537,22 +677,36 @@ class OpenAPIToMarkdown:
 
 def main():
     """CLI entry point."""
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <openapi-file.yaml> [output.md]")
-        print("\nExample:")
-        print("  python main.py APIs.guru-swagger.json")
-        print("  python main.py api-spec.yaml api-docs.md")
-        sys.exit(1)
-    
-    input_file = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else None
-    
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Convert OpenAPI specs to LLM-ready markdown, chunked JSON, or tool schemas."
+    )
+    parser.add_argument("input", help="Path to OpenAPI YAML/JSON file")
+    parser.add_argument("output", nargs="?", default=None, help="Output file path (default: auto-generated)")
+    parser.add_argument("--chunked", action="store_true", help="Output progressive-disclosure chunks as JSON")
+    parser.add_argument("--tools", action="store_true", help="Output JSON Schema tool definitions for function-calling")
+
+    args = parser.parse_args()
+
     try:
-        converter = OpenAPIToMarkdown(input_file, output_file)
-        markdown = converter.convert()
-        converter.save(markdown)
+        converter = OpenAPIToMarkdown(args.input, args.output)
+
+        if args.chunked:
+            result = converter.convert_chunked()
+            out_path = args.output or converter.output_path.with_suffix(".chunks.json")
+            Path(out_path).write_text(json.dumps(result, indent=2), encoding="utf-8")
+            print(f"Chunked output written to {out_path}")
+        elif args.tools:
+            result = converter.generate_tool_schemas()
+            out_path = args.output or converter.output_path.with_suffix(".tools.json")
+            Path(out_path).write_text(json.dumps(result, indent=2), encoding="utf-8")
+            print(f"Tool schemas written to {out_path}")
+        else:
+            markdown = converter.convert()
+            converter.save(markdown)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

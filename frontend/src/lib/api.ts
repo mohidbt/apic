@@ -2,7 +2,7 @@
  * API service for interacting with the backend API
  */
 
-import { ApiSpec, SpecDetail, SpecListResponse, Tag } from '@/types/api-spec'
+import { ApiSpec, ChunkedSpec, SpecDetail, SpecListResponse, Tag, ToolSchema } from '@/types/api-spec'
 
 /**
  * Get the appropriate API base URL based on the environment
@@ -190,6 +190,34 @@ export function formatDate(dateString: string): string {
   } else {
     return date.toLocaleDateString()
   }
+}
+
+/**
+ * Fetch progressive-disclosure chunks for a spec (manifest, tags, endpoints, schemas)
+ */
+export async function fetchSpecChunks(id: number): Promise<ChunkedSpec> {
+  const API_BASE_URL = getApiBaseUrl()
+  const response = await fetch(`${API_BASE_URL}/api/specs/${id}/chunks`)
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch spec chunks: ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
+/**
+ * Fetch JSON Schema tool definitions for a spec's endpoints
+ */
+export async function fetchSpecTools(id: number): Promise<ToolSchema[]> {
+  const API_BASE_URL = getApiBaseUrl()
+  const response = await fetch(`${API_BASE_URL}/api/specs/${id}/tools`)
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch spec tools: ${response.statusText}`)
+  }
+
+  return response.json()
 }
 
 /**

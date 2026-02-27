@@ -353,8 +353,11 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
             {specs.map((spec) => (
               <TableRow
                 key={spec.id}
+                tabIndex={0}
+                role="button"
                 className="cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => onRowClick(spec)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick(spec) } }}
               >
                 <TableCell className="font-medium">
                   <div className="flex flex-col">

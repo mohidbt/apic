@@ -35,3 +35,20 @@ export interface SpecListResponse {
   specs: ApiSpec[]
 }
 
+export interface ChunkedSpec {
+  manifest: string
+  tags: Record<string, string>
+  endpoints: Record<string, string>
+  schemas: Record<string, string>
+}
+
+export interface ToolSchema {
+  name: string
+  description: string
+  parameters: {
+    type: string
+    properties: Record<string, any>
+    required?: string[]
+  }
+}
+

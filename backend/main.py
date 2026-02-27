@@ -903,6 +903,61 @@ async def download_original(
     )
 
 
+@app.get("/api/specs/{spec_id}/chunks")
+async def get_spec_chunks(
+    spec_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Return progressive-disclosure chunks computed on the fly from the stored spec.
+    Result: { manifest, tags: {name: md}, endpoints: {opId: md}, schemas: {name: md} }
+    """
+    spec = crud.get_spec(db, spec_id)
+    if not spec:
+        raise HTTPException(status_code=404, detail="Spec not found")
+
+    def _convert():
+        ext = ".yaml" if spec.original_format in ("yaml", "yml", None) else ".json"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=ext, delete=False, encoding="utf-8") as f:
+            f.write(spec.original_content)
+            tmp = f.name
+        try:
+            converter = OpenAPIToMarkdown(tmp)
+            return converter.convert_chunked()
+        finally:
+            Path(tmp).unlink(missing_ok=True)
+
+    chunked = await run_in_threadpool(_convert)
+    return JSONResponse(content=chunked)
+
+
+@app.get("/api/specs/{spec_id}/tools")
+async def get_spec_tools(
+    spec_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Return JSON Schema tool definitions (one per endpoint) for function-calling.
+    """
+    spec = crud.get_spec(db, spec_id)
+    if not spec:
+        raise HTTPException(status_code=404, detail="Spec not found")
+
+    def _convert():
+        ext = ".yaml" if spec.original_format in ("yaml", "yml", None) else ".json"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=ext, delete=False, encoding="utf-8") as f:
+            f.write(spec.original_content)
+            tmp = f.name
+        try:
+            converter = OpenAPIToMarkdown(tmp)
+            return converter.generate_tool_schemas()
+        finally:
+            Path(tmp).unlink(missing_ok=True)
+
+    tools = await run_in_threadpool(_convert)
+    return JSONResponse(content=tools)
+
+
 @app.get("/api/tags", response_model=List[TagResponse])
 async def list_tags_endpoint(
     db: Session = Depends(get_db)
