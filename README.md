@@ -8,15 +8,26 @@
 
 ## ✨ Features
 
-### Converter Features
-- **Dereferences `$ref` schemas** — Inline references for readability  
-- **Surfaces authentication** — Security schemes pulled into each endpoint  
-- **Base URLs highlighted** — Server information prominently displayed  
-- **Runnable examples** — Auto-generated curl commands with placeholders  
-- **Strict separators** — Delimiters prevent boundary confusion  (Inspired by GitIngest, see below)
-- **Tag grouping** — Organized by tags, alphabetically sorted  
-- **Type normalization** — Clean type display (string (uuid), array<User>, etc.)  
-- **Token-aware** — Designed to keep endpoint chunks under 2-4K tokens  
+### Converter
+- **Three output modes** — Monolithic markdown, chunked JSON (progressive disclosure), and JSON Schema tool definitions
+- **Stable `operationId` anchors** — Each endpoint block includes its `operationId` for deterministic lookup
+- **Self-contained endpoint blocks** — Base URL, auth, params, schemas, and curl example repeated per block so each chunk stands alone
+- **Dereferences `$ref` schemas** — Inline references for readability
+- **Runnable curl examples** — Auto-generated with auth placeholders
+- **Strict separators** — Gitingest-style `====` delimiters prevent boundary confusion
+- **Tag grouping** — Organized by tags, alphabetically sorted
+- **Type normalization** — Clean type display (`string (uuid)`, `array<User>`, etc.)
+- **Token-aware** — Endpoint blocks target 2-4K tokens
+
+### MCP Server
+- **Progressive disclosure** — Manifest, tags, endpoints, and schemas exposed as individually addressable MCP resources
+- **On-the-fly conversion** — `convert_spec` and `convert_spec_to_tools` MCP tools for specs not stored in the DB
+- **Content-hash caching** — Avoids re-converting the same spec on repeated resource requests
+
+### Web UI
+- **Tabbed spec explorer** — Overview, Chunks, Tool Schemas, and Full Markdown tabs
+- **Searchable chunk browser** — Filter endpoints and schemas by name within the Chunks tab
+- **Copy-friendly tool schemas** — Expandable JSON with one-click copy
 
 ## 🚀 Quick Start
 
@@ -46,46 +57,58 @@ Then open http://localhost:3000 in your browser!
    - Open http://localhost:3000
    - Drag and drop your OpenAPI YAML/JSON file
    - Click "Convert to Markdown"
-   - Download starts automatically!
+   - Browse chunks, tool schemas, and full markdown in the spec detail modal
 
 2. **Command Line**
    ```bash
    cd backend
-   python transformation.py ../examples/APIs.guru-swagger.yaml
+
+   # Monolithic markdown (default)
+   python transformation.py spec.yaml
+
+   # Progressive-disclosure chunks as JSON
+   python transformation.py spec.yaml --chunked
+
+   # JSON Schema tool definitions for function-calling
+   python transformation.py spec.yaml --tools
    ```
 
-3. **API Endpoint**
+3. **API Endpoints**
    ```bash
-   curl -X POST http://localhost:8000/convert \
-     -F "file=@openapi-spec.yaml" \
-     -o output.md
+   # Convert and download markdown
+   curl -X POST http://localhost:8000/api/convert \
+     -F "file=@openapi-spec.yaml"
+
+   # Get chunked output for a stored spec
+   curl http://localhost:8000/api/specs/1/chunks
+
+   # Get tool schemas for a stored spec
+   curl http://localhost:8000/api/specs/1/tools
    ```
 
 ## 📁 Project Structure
 
 ```
-apiingest/
-├── backend/               # FastAPI server
-│   ├── main.py           # API server with file upload
-│   ├── transformation.py # Core OpenAPI→Markdown converter
-│   ├── requirements.txt  # Python dependencies
-│   └── README.md         # Backend documentation
-├── frontend/             # Next.js web application
-│   ├── src/              # React components and pages
-│   ├── public/           # Static assets
-│   ├── package.json      # Node dependencies
-│   └── .env.example      # Environment variables template
-├── examples/             # Example OpenAPI specifications
-│   ├── APIs.guru-swagger.yaml
-│   ├── APIs.guru-swagger.json
-│   └── README.md
-├── docs/                 # Documentation
-│   ├── SETUP.md         # Detailed setup guide
-│   ├── DEPLOYMENT.md    # Koyeb deployment instructions
-│   └── QUICK_REFERENCE.md
-├── .koyeb/              # Deployment configuration
-│   └── config.yaml
-└── README.md            # This file
+├── backend/                    # FastAPI + MCP server
+│   ├── main.py                # API server (convert, specs CRUD, chunks, tools)
+│   ├── transformation.py      # Core OpenAPI → Markdown/Chunks/Tools converter
+│   ├── mcp_server.py          # MCP server exposing specs as resources + tools
+│   ├── models/                # SQLAlchemy models (ApiSpec, database setup)
+│   ├── crud/                  # Database query helpers
+│   ├── schemas/               # Pydantic response schemas
+│   ├── tests/                 # pytest suite (transformation, behavioral, robustness)
+│   ├── scripts/               # Import utilities
+│   └── requirements.txt
+├── frontend/                   # Next.js web application
+│   ├── src/
+│   │   ├── app/               # App router pages (marketplace, spec detail)
+│   │   ├── components/        # UI components (spec-detail-modal, etc.)
+│   │   ├── lib/               # API client (fetchSpecChunks, fetchSpecTools)
+│   │   └── types/             # TypeScript types (ChunkedSpec, ToolSchema)
+│   └── package.json
+├── examples/                   # Example OpenAPI specifications
+├── docs/                       # Setup, deployment, and reference guides
+└── README.md
 ```
 
 ## 📖 Output Format
@@ -110,15 +133,17 @@ Brief description...
 
 ### Endpoint Blocks
 
-Each endpoint uses strict delimiters (inspired by Gitingest):
+Each endpoint uses strict delimiters (inspired by Gitingest) and is fully self-contained:
 
 ```
 ================================================================================
 ENDPOINT: [GET] /users/{id}
+OPERATION_ID: getUserById
+BASE_URL: https://api.example.com
 TAGS: Users
 SUMMARY: Get a user by ID
 DESCRIPTION: Retrieves detailed user information...
-AUTH: Bearer token
+AUTH: BEARER token
 
 REQUEST
   Path params:
@@ -142,17 +167,19 @@ curl -X GET \
 ================================================================================
 ```
 
+`OPERATION_ID` is the stable key used for chunked output, MCP resource URIs, and tool schema names. `BASE_URL` is repeated per block so each chunk stands alone without referencing the header.
+
 ## 🎯 Why This Format?
 
 ### LLM Benefits
 
 1. **Strict Delimiters** — `=` bars prevent AI from confusing endpoint boundaries
-2. **Dereferenced Schemas** — No need to chase `$ref` pointers during code generation
-3. **Inline Auth** — Security requirements visible per-endpoint
-4. **Runnable Examples** — Copy-paste curl commands with placeholder variables
-5. **Normalized Types** — Consistent type display helps pattern recognition
-6. **Tag Grouping** — Logical organization mimics developer thinking
-7. **Token-Optimized** — Chunks designed to fit in context windows
+2. **Self-contained blocks** — Each endpoint includes its own base URL and auth, so a single retrieved chunk has everything needed to construct a request
+3. **Stable IDs** — `OPERATION_ID` provides a deterministic key for lookup, tool schemas, and MCP URIs
+4. **Dereferenced Schemas** — No need to chase `$ref` pointers during code generation
+5. **Progressive Disclosure** — Chunked output lets agents fetch manifest first, then only the endpoints they need (avoids "lost in the middle")
+6. **Tool Schema Parity** — `generate_tool_schemas()` produces JSON Schema definitions that match the docs 1:1, so docs and callable tools stay isomorphic
+7. **Token-Optimized** — Endpoint blocks target 2-4K tokens; agents never need to ingest the whole spec
 
 ### Inspired by Gitingest
 
@@ -161,6 +188,37 @@ This format borrows from [Gitingest](https://gitingest.com/)'s approach:
 - Repeated delimiters between entries
 - Stable, deterministic ordering
 - Noise filtering for clarity
+
+## 🔌 MCP Server
+
+The MCP server (`backend/mcp_server.py`) exposes stored API specs as discoverable resources and tools, implementing the progressive-disclosure pattern so agents spend minimal tokens.
+
+### Resources
+
+| URI | Description |
+|-----|-------------|
+| `docs://specs` | List all stored specs (id, name, version, token count) |
+| `docs://specs/{id}/manifest` | Title, version, base URLs, auth, tag-grouped endpoint index |
+| `docs://specs/{id}/tags/{tag}` | Per-tag endpoint listing with operationIds and summaries |
+| `docs://specs/{id}/endpoints/{operationId}` | Full self-contained endpoint block |
+| `docs://specs/{id}/schemas/{name}` | Single component schema definition |
+| `docs://specs/{id}/tools` | JSON tool definitions for all endpoints |
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `convert_spec` | Convert raw OpenAPI YAML/JSON to chunked markdown on the fly |
+| `convert_spec_to_tools` | Convert raw OpenAPI spec to JSON Schema tool definitions |
+
+### Running the MCP server
+
+```bash
+cd backend
+python mcp_server.py
+```
+
+An agent workflow typically looks like: fetch manifest (small) -> pick relevant endpoint by operationId -> fetch only that endpoint block. This avoids dumping the entire spec into context.
 
 ## 🌐 Deployment
 
@@ -204,7 +262,9 @@ See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for complete instructions.
 - **FastAPI** — Modern Python web framework
 - **uvicorn** — ASGI server
 - **PyYAML** — YAML parsing
-- **Python 3.8+**
+- **MCP Python SDK** — Model Context Protocol server
+- **tiktoken** — Token counting
+- **Python 3.10+**
 
 ### Frontend
 - **Next.js 15** — React framework
@@ -223,17 +283,24 @@ See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for complete instructions.
 
 ## 🧪 Testing
 
-Try it with the included examples:
-
 ```bash
-# Backend directory
 cd backend
 
-# Convert example spec
-python transformation.py ../examples/APIs.guru-swagger.yaml
+# Run the full test suite
+pytest tests/ -v
 
-# Start API server for testing
-python main.py
+# Run specific test tiers
+pytest tests/test_transformation.py -v    # Core converter logic
+pytest tests/test_p1_behavioral.py -v     # Behavioral edge cases (allOf, security overrides, etc.)
+pytest tests/test_p2_robustness.py -v     # Robustness (empty specs, perf guards, special chars)
+```
+
+The test suite covers monolithic, chunked, and tool-schema outputs, verifying cross-format consistency (same spec produces matching operationIds and endpoints across all three modes).
+
+To try the converter manually:
+
+```bash
+python transformation.py ../examples/APIs.guru-swagger.yaml
 ```
 
 ## 🤝 Contributing
@@ -257,10 +324,10 @@ MIT — Feel free to use, modify, and distribute.
 ## 💡 Use Cases
 
 - **AI Coding Assistants** — Feed API docs to Claude, GPT, etc.
-- **API Documentation** — Generate readable docs from OpenAPI specs
+- **MCP-connected agents** — Agents discover and fetch only the endpoints they need via the MCP server
+- **Function-calling / tool use** — Generate JSON Schema tool definitions directly from any OpenAPI spec
+- **RAG Systems** — Token-optimized chunks with natural split boundaries for retrieval
 - **Developer Onboarding** — Clear, structured API references
-- **RAG Systems** — Token-optimized chunks for retrieval
-- **Code Generation** — Help AI understand your API structure
 
 ## 🐛 Issues & Support
 
