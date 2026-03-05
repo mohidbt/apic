@@ -2,7 +2,7 @@
 """
 OpenAPI to LLM-Ready Markdown Converter
 
-Converts OpenAPI YAML/JSON specifications into structured, LLM-friendly markdown format.
+Converts API specifications (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown format.
 Features:
 - Dereferences $ref schemas
 - Surfaces authentication and base URLs
@@ -38,12 +38,35 @@ class OpenAPIToMarkdown:
             self.output_path = self._generate_output_filename()
         
     def _load_spec(self) -> Dict[str, Any]:
-        """Load OpenAPI spec from YAML or JSON."""
+        """Load API spec from YAML, JSON, or other formats (best-effort)."""
         with open(self.spec_path, 'r', encoding='utf-8') as f:
-            if self.spec_path.suffix in ['.yaml', '.yml']:
-                return yaml.safe_load(f)
-            else:
-                return json.load(f)
+            content = f.read()
+
+        suffix = self.spec_path.suffix.lower()
+
+        if suffix in ('.yaml', '.yml', '.raml'):
+            return yaml.safe_load(content) or {}
+
+        if suffix == '.json':
+            return json.loads(content)
+
+        try:
+            result = yaml.safe_load(content)
+            if isinstance(result, dict):
+                return result
+        except Exception:
+            pass
+        try:
+            result = json.loads(content)
+            if isinstance(result, dict):
+                return result
+        except Exception:
+            pass
+
+        return {
+            "info": {"title": self.spec_path.stem, "version": "1.0.0"},
+            "_raw_content": content,
+        }
     
     def _generate_output_filename(self) -> Path:
         """Generate output filename based on API name and version."""
@@ -680,9 +703,9 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Convert OpenAPI specs to LLM-ready markdown, chunked JSON, or tool schemas."
+        description="Convert API specs to LLM-ready markdown, chunked JSON, or tool schemas."
     )
-    parser.add_argument("input", help="Path to OpenAPI YAML/JSON file")
+    parser.add_argument("input", help="Path to API spec file (YAML, JSON, RAML, WSDL, GraphQL, API Blueprint)")
     parser.add_argument("output", nargs="?", default=None, help="Output file path (default: auto-generated)")
     parser.add_argument("--chunked", action="store_true", help="Output progressive-disclosure chunks as JSON")
     parser.add_argument("--tools", action="store_true", help="Output JSON Schema tool definitions for function-calling")

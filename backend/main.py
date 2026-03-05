@@ -50,6 +50,13 @@ JOB_MAX_ITEMS = int(os.getenv("CONVERSION_JOB_MAX_ITEMS", "200"))
 CONVERSION_MAX_CONCURRENT = int(os.getenv("CONVERSION_MAX_CONCURRENT", "1"))
 CONVERSION_MAX_QUEUE = int(os.getenv("CONVERSION_MAX_QUEUE", "20"))
 
+ALLOWED_EXTENSIONS = [".yaml", ".yml", ".json", ".raml", ".apib", ".wsdl", ".graphql", ".gql"]
+FORMAT_MAP = {
+    ".yaml": "yaml", ".yml": "yaml", ".json": "json",
+    ".raml": "raml", ".apib": "apib", ".wsdl": "wsdl",
+    ".graphql": "graphql", ".gql": "graphql",
+}
+
 conversion_jobs: Dict[str, Dict[str, Any]] = {}
 job_lock = asyncio.Lock()
 worker_semaphore = asyncio.Semaphore(max(CONVERSION_MAX_CONCURRENT, 1))
@@ -105,11 +112,34 @@ async def write_upload_to_temp(
 
 
 def load_openapi_spec(path: str, file_extension: str) -> Dict[str, Any]:
-    """Load OpenAPI spec as dict from a file path."""
+    """Load API spec as dict from a file path. Best-effort for non-OpenAPI formats."""
     with open(path, "r", encoding="utf-8") as f:
-        if file_extension in [".yaml", ".yml"]:
-            return yaml.safe_load(f) or {}
-        return json.load(f)
+        content = f.read()
+
+    if file_extension in (".yaml", ".yml", ".raml"):
+        return yaml.safe_load(content) or {}
+
+    if file_extension == ".json":
+        return json.loads(content)
+
+    # Best-effort for other formats: try YAML, then JSON, then wrap raw content
+    try:
+        result = yaml.safe_load(content)
+        if isinstance(result, dict):
+            return result
+    except Exception:
+        pass
+    try:
+        result = json.loads(content)
+        if isinstance(result, dict):
+            return result
+    except Exception:
+        pass
+
+    return {
+        "info": {"title": Path(path).stem, "version": "1.0.0"},
+        "_raw_content": content,
+    }
 
 
 def now_ts() -> float:
@@ -256,7 +286,7 @@ async def process_conversion_job(
                         version=spec_info.get("version", "1.0.0"),
                         provider=spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name"),
                         original_filename=safe_filename,
-                        original_format="yaml" if file_extension in [".yaml", ".yml"] else "json",
+                        original_format=FORMAT_MAP.get(file_extension, "yaml"),
                         original_content=original_content,
                         markdown_content=markdown_content,
                         token_count=token_count,
@@ -493,14 +523,13 @@ async def convert_openapi(
 
     logger.info("Received conversion request id=%s file=%s", request_id, file.filename)
 
-    allowed_extensions = [".yaml", ".yml", ".json"]
     safe_filename = file.filename or "upload.json"
     file_extension = Path(safe_filename).suffix.lower()
 
-    if file_extension not in allowed_extensions:
+    if file_extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}",
+            detail=f"Invalid file type. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}",
         )
 
     try:
@@ -658,13 +687,12 @@ async def share_converted_spec(
     started_at = time.perf_counter()
     temp_input_path = ""
 
-    allowed_extensions = [".yaml", ".yml", ".json"]
     safe_filename = file.filename or "upload.json"
     file_extension = Path(safe_filename).suffix.lower()
-    if file_extension not in allowed_extensions:
+    if file_extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}",
+            detail=f"Invalid file type. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}",
         )
 
     try:
@@ -695,7 +723,7 @@ async def share_converted_spec(
             version=spec_info.get("version", "1.0.0"),
             provider=spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name"),
             original_filename=safe_filename,
-            original_format="yaml" if file_extension in [".yaml", ".yml"] else "json",
+            original_format=FORMAT_MAP.get(file_extension, "yaml"),
             original_content=original_content,
             markdown_content=markdown_content,
             token_count=resolved_token_count,

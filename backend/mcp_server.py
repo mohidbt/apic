@@ -150,7 +150,8 @@ def get_endpoint(spec_id: int, operation_id: str) -> str:
 @mcp.resource("docs://specs/{spec_id}/schemas/{schema_name}")
 def get_schema(spec_id: int, schema_name: str) -> str:
     """Single component schema definition."""
-    chunked, _ = _get_chunked_and_converter(spec_id)
+    spec = _get_spec_row(spec_id)
+    chunked, _ = _chunked_from_spec(spec)
     schema = chunked["schemas"].get(schema_name)
     if schema is None:
         available = ", ".join(sorted(chunked["schemas"].keys())[:20])
@@ -164,7 +165,8 @@ def get_schema(spec_id: int, schema_name: str) -> str:
 @mcp.resource("docs://specs/{spec_id}/tools")
 def get_tool_schemas(spec_id: int) -> str:
     """JSON tool definitions for all endpoints — ready for function-calling."""
-    _, converter = _get_chunked_and_converter(spec_id)
+    spec = _get_spec_row(spec_id)
+    _, converter = _chunked_from_spec(spec)
     tools = converter.generate_tool_schemas()
     return json.dumps(tools, indent=2)
 
@@ -172,19 +174,26 @@ def get_tool_schemas(spec_id: int) -> str:
 # ── Tools ──────────────────────────────────────────────────────────────
 
 
+_FORMAT_TO_EXT = {
+    "yaml": ".yaml", "yml": ".yaml", "json": ".json",
+    "raml": ".raml", "apib": ".apib", "wsdl": ".wsdl",
+    "graphql": ".graphql", "gql": ".graphql",
+}
+
+
 @mcp.tool()
 def convert_spec(content: str, format: str = "yaml") -> str:
     """
-    Convert raw OpenAPI spec content to chunked LLM-ready markdown.
+    Convert raw API spec content to chunked LLM-ready markdown.
 
     Args:
-        content: The OpenAPI spec as a string (YAML or JSON).
-        format: "yaml" or "json" (default "yaml").
+        content: The API spec as a string (YAML, JSON, RAML, API Blueprint, WSDL, or GraphQL).
+        format: One of yaml, json, raml, apib, wsdl, graphql (default "yaml").
 
     Returns:
         JSON with keys: manifest, tags, endpoints, schemas.
     """
-    ext = ".yaml" if format in ("yaml", "yml") else ".json"
+    ext = _FORMAT_TO_EXT.get(format, ".yaml")
     with tempfile.NamedTemporaryFile(mode="w", suffix=ext, delete=False, encoding="utf-8") as f:
         f.write(content)
         tmp = f.name
@@ -199,16 +208,16 @@ def convert_spec(content: str, format: str = "yaml") -> str:
 @mcp.tool()
 def convert_spec_to_tools(content: str, format: str = "yaml") -> str:
     """
-    Convert raw OpenAPI spec to JSON tool schemas for function-calling.
+    Convert raw API spec to JSON tool schemas for function-calling.
 
     Args:
-        content: The OpenAPI spec as a string (YAML or JSON).
-        format: "yaml" or "json" (default "yaml").
+        content: The API spec as a string (YAML, JSON, RAML, API Blueprint, WSDL, or GraphQL).
+        format: One of yaml, json, raml, apib, wsdl, graphql (default "yaml").
 
     Returns:
         JSON array of tool definitions.
     """
-    ext = ".yaml" if format in ("yaml", "yml") else ".json"
+    ext = _FORMAT_TO_EXT.get(format, ".yaml")
     with tempfile.NamedTemporaryFile(mode="w", suffix=ext, delete=False, encoding="utf-8") as f:
         f.write(content)
         tmp = f.name

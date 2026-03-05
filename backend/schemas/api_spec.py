@@ -28,7 +28,7 @@ class SpecCreate(BaseModel):
     version: str = Field(..., min_length=1, max_length=50)
     provider: Optional[str] = Field(None, max_length=255)
     original_filename: Optional[str] = Field(None, max_length=255)
-    original_format: Optional[str] = Field(None, pattern='^(yaml|json)$')
+    original_format: Optional[str] = Field(None, pattern='^(yaml|json|raml|apib|wsdl|graphql)$')
     original_content: str = Field(..., min_length=1)
     markdown_content: str = Field(..., min_length=1)
     token_count: Optional[int] = Field(None, ge=0)

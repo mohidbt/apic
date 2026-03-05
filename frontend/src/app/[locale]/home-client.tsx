@@ -110,11 +110,11 @@ export default function HomeClient({ starCount }: HomeClientProps) {
   }
 
   const validateFile = (file: File): boolean => {
-    const validExtensions = ['.yaml', '.yml', '.json']
+    const validExtensions = ['.yaml', '.yml', '.json', '.raml', '.apib', '.wsdl', '.graphql', '.gql']
     const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
     
     if (!validExtensions.includes(fileExtension)) {
-      toast.error('Invalid file type. Please upload a YAML, YML or JSON spec.')
+      toast.error('Invalid file type. Accepted: YAML, JSON, RAML, WSDL, GraphQL, API Blueprint.')
       return false
     }
     return true
@@ -379,7 +379,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
             Let LLMs finally understand API Docs.
             </p>
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-              Just insert your API specs (YAML, YML, or JSON) and get LLM-Ready Markdown back.
+              Just insert your API specs (YAML, JSON, RAML, WSDL, GraphQL, or API Blueprint) and get LLM-Ready Markdown back.
               Or use the marketplace download ready-made API-Skills.
             </p>
           </div>
@@ -390,7 +390,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".yaml,.yml,.json"
+              accept=".yaml,.yml,.json,.raml,.apib,.wsdl,.graphql,.gql"
               onChange={handleFileChange}
               className="hidden"
             />
@@ -428,7 +428,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
                     Click to upload or drag and drop
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    YAML, YML, or JSON files only
+                    YAML, JSON, RAML, WSDL, GraphQL, or API Blueprint files
                   </p>
                 </div>
               )}
@@ -456,7 +456,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
             {/* Example Files Notice */}
             <div className="space-y-4">
               <p className="text-center text-sm text-card-foreground">
-                Upload your OpenAPI specification file (YAML/YML/JSON) and get LLM-optimized Markdown
+                Upload your API specification file and get LLM-optimized Markdown
               </p>
               <div className="rounded-lg border-2 border-border bg-background p-4 text-center">
                 <p className="mb-2 text-sm font-bold text-muted-foreground">

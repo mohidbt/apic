@@ -1,6 +1,6 @@
 # APIIngest - Let LLMs work with APIs
 
-**Handy tool** that converts API specs (OpenAPI YAML/JSON) specifications into structured, LLM-friendly markdown optimized for AI codegen assistants. 
+**Handy tool** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown optimized for AI codegen assistants. 
 [api-ingest.com](https://api-ingest.com/)
 
 
@@ -19,7 +19,7 @@
 - **Type normalization** — Clean type display (`string (uuid)`, `array<User>`, etc.)
 - **Token-aware** — Endpoint blocks target 2-4K tokens
 
-### MCP Server
+### MCP Server (in work 🛠️)
 - **Progressive disclosure** — Manifest, tags, endpoints, and schemas exposed as individually addressable MCP resources
 - **On-the-fly conversion** — `convert_spec` and `convert_spec_to_tools` MCP tools for specs not stored in the DB
 - **Content-hash caching** — Avoids re-converting the same spec on repeated resource requests
@@ -55,7 +55,7 @@ Then open http://localhost:3000 in your browser!
 
 1. **Web Interface** (Recommended)
    - Open http://localhost:3000
-   - Drag and drop your OpenAPI YAML/JSON file
+   - Drag and drop your API spec file (YAML, JSON, RAML, WSDL, GraphQL, or API Blueprint)
    - Click "Convert to Markdown"
    - Browse chunks, tool schemas, and full markdown in the spec detail modal
 

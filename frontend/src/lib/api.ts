@@ -130,7 +130,11 @@ export async function downloadOriginal(
   // Create a temporary anchor element and trigger download
   const a = document.createElement('a')
   a.href = url
-  const ext = format === 'json' ? 'json' : 'yaml'
+  const extMap: Record<string, string> = {
+    json: 'json', yaml: 'yaml', raml: 'raml',
+    apib: 'apib', wsdl: 'wsdl', graphql: 'graphql',
+  }
+  const ext = extMap[format] ?? 'yaml'
   a.download = `${name}-v${version}.${ext}`.replace(/\s+/g, '-')
   a.style.display = 'none'
   document.body.appendChild(a)

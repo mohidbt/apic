@@ -28,7 +28,7 @@ class ApiSpec(Base):
     version = Column(String(50), nullable=False)
     provider = Column(String(255), nullable=True)
     original_filename = Column(String(255), nullable=True)
-    original_format = Column(String(10), nullable=True)  # 'yaml' or 'json'
+    original_format = Column(String(10), nullable=True)  # yaml, json, raml, apib, wsdl, graphql
     original_content = Column(Text, nullable=False)
     markdown_content = Column(Text, nullable=False)
     token_count = Column(Integer, nullable=True)
