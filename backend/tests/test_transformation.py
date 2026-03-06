@@ -514,9 +514,12 @@ class TestP0EdgeCases:
 # ── 6. Real spec smoke tests ─────────────────────────────────────────
 
 
-EXAMPLE_SPECS = list(Path(__file__).resolve().parent.parent.parent.glob("examples/*.json")) + \
-                list(Path(__file__).resolve().parent.parent.parent.glob("examples/*.yaml")) + \
-                list(Path(__file__).resolve().parent.parent.parent.glob("examples/*.yml"))
+_EXAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "examples"
+EXAMPLE_SPECS = sorted(
+    [p for ext in ("*.json", "*.yaml", "*.yml", "*.raml", "*.apib", "*.wsdl", "*.graphql", "*.gql")
+     for p in _EXAMPLES_DIR.glob(ext)],
+    key=lambda p: p.name,
+)
 
 
 @pytest.mark.parametrize("spec_path", EXAMPLE_SPECS, ids=lambda p: p.name)
@@ -542,6 +545,8 @@ class TestRealSpecs:
             assert "parameters" in tool
 
     def test_no_unresolved_refs_in_output(self, spec_path):
+        if spec_path.suffix.lower() in (".raml", ".apib", ".wsdl", ".graphql", ".gql"):
+            pytest.skip("$ref check only applies to OpenAPI specs")
         converter = OpenAPIToMarkdown(str(spec_path))
         md = converter.convert()
         assert "$ref" not in md, "Unresolved $ref found in markdown output"

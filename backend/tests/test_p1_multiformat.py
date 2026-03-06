@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from transformation import OpenAPIToMarkdown
-from main import load_openapi_spec, ALLOWED_EXTENSIONS, FORMAT_MAP
+from main import load_openapi_spec, ALLOWED_EXTENSIONS, FORMAT_MAP, FORMAT_TO_EXT
 
 # ── Inline fixtures ───────────────────────────────────────────────────
 
@@ -380,3 +380,136 @@ class TestNegative:
             assert isinstance(md, str)
         finally:
             Path(tmp).unlink(missing_ok=True)
+
+
+# ── Group 5: Chunked output for every format ─────────────────────────
+
+_FORMATS = [
+    ("RAML", RAML_CONTENT, ".raml"),
+    ("APIB", APIB_CONTENT, ".apib"),
+    ("WSDL", WSDL_CONTENT, ".wsdl"),
+    ("GraphQL", GRAPHQL_CONTENT, ".graphql"),
+]
+
+
+class TestChunkedMultiFormat:
+    """convert_chunked() must produce valid progressive-disclosure output for every format."""
+
+    @pytest.fixture(params=_FORMATS, ids=lambda f: f[0])
+    def converter(self, request):
+        _, content, suffix = request.param
+        tmp = _write_temp(content, suffix)
+        try:
+            yield OpenAPIToMarkdown(tmp)
+        finally:
+            Path(tmp).unlink(missing_ok=True)
+
+    def test_chunked_has_all_keys(self, converter):
+        chunked = converter.convert_chunked()
+        assert set(chunked.keys()) == {"manifest", "tags", "endpoints", "schemas"}
+
+    def test_manifest_contains_title(self, converter):
+        chunked = converter.convert_chunked()
+        title = converter.spec.get("info", {}).get("title", "")
+        assert title in chunked["manifest"]
+
+    def test_endpoints_non_empty(self, converter):
+        chunked = converter.convert_chunked()
+        paths = converter.spec.get("paths", {})
+        if paths:
+            assert len(chunked["endpoints"]) > 0
+
+    def test_each_endpoint_self_contained(self, converter):
+        chunked = converter.convert_chunked()
+        for op_id, block in chunked["endpoints"].items():
+            assert "ENDPOINT:" in block, f"{op_id} missing ENDPOINT: marker"
+            assert "BASE_URL:" in block, f"{op_id} missing BASE_URL: marker"
+
+    def test_endpoint_count_matches_operations(self, converter):
+        """Number of chunked endpoints == number of operations in spec paths."""
+        chunked = converter.convert_chunked()
+        op_count = sum(
+            1 for methods in converter.spec.get("paths", {}).values()
+            for m in methods
+            if m in ("get", "post", "put", "patch", "delete", "head", "options")
+        )
+        assert len(chunked["endpoints"]) == op_count
+
+    def test_schemas_match_components(self, converter):
+        chunked = converter.convert_chunked()
+        spec_schemas = set(converter.spec.get("components", {}).get("schemas", {}).keys())
+        assert set(chunked["schemas"].keys()) == spec_schemas
+
+
+# ── Group 6: Tool schemas for every format ───────────────────────────
+
+
+class TestToolSchemasMultiFormat:
+    """generate_tool_schemas() must produce valid tool definitions for every format."""
+
+    @pytest.fixture(params=_FORMATS, ids=lambda f: f[0])
+    def converter(self, request):
+        _, content, suffix = request.param
+        tmp = _write_temp(content, suffix)
+        try:
+            yield OpenAPIToMarkdown(tmp)
+        finally:
+            Path(tmp).unlink(missing_ok=True)
+
+    def test_tools_non_empty(self, converter):
+        tools = converter.generate_tool_schemas()
+        paths = converter.spec.get("paths", {})
+        if paths:
+            assert len(tools) > 0
+
+    def test_tool_count_matches_operations(self, converter):
+        tools = converter.generate_tool_schemas()
+        op_count = sum(
+            1 for methods in converter.spec.get("paths", {}).values()
+            for m in methods
+            if m in ("get", "post", "put", "patch", "delete", "head", "options")
+        )
+        assert len(tools) == op_count
+
+    def test_tool_structure(self, converter):
+        tools = converter.generate_tool_schemas()
+        for tool in tools:
+            assert "name" in tool
+            assert "description" in tool
+            assert "parameters" in tool
+            assert tool["parameters"]["type"] == "object"
+            assert "properties" in tool["parameters"]
+
+    def test_tool_names_match_chunked_endpoints(self, converter):
+        """Tool names must exactly match chunked endpoint keys."""
+        chunked = converter.convert_chunked()
+        tools = converter.generate_tool_schemas()
+        tool_names = {t["name"] for t in tools}
+        assert tool_names == set(chunked["endpoints"].keys())
+
+
+# ── Group 7: FORMAT_TO_EXT correctness ───────────────────────────────
+
+
+class TestFormatToExt:
+    def test_every_original_format_has_ext(self):
+        """Every unique value in FORMAT_MAP has a reverse mapping in FORMAT_TO_EXT."""
+        for fmt in set(FORMAT_MAP.values()):
+            assert fmt in FORMAT_TO_EXT, f"FORMAT_TO_EXT missing '{fmt}'"
+
+    def test_ext_roundtrips(self):
+        """FORMAT_MAP[FORMAT_TO_EXT[fmt]] == fmt for all formats."""
+        for fmt, ext in FORMAT_TO_EXT.items():
+            assert FORMAT_MAP[ext] == fmt
+
+    def test_raml_maps_to_raml_ext(self):
+        assert FORMAT_TO_EXT["raml"] == ".raml"
+
+    def test_graphql_maps_to_graphql_ext(self):
+        assert FORMAT_TO_EXT["graphql"] == ".graphql"
+
+    def test_wsdl_maps_to_wsdl_ext(self):
+        assert FORMAT_TO_EXT["wsdl"] == ".wsdl"
+
+    def test_apib_maps_to_apib_ext(self):
+        assert FORMAT_TO_EXT["apib"] == ".apib"

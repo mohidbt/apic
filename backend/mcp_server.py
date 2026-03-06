@@ -66,7 +66,7 @@ def _get_cached_conversion(
     while len(_CONVERSION_CACHE) >= _MAX_CACHE_SIZE:
         del _CONVERSION_CACHE[next(iter(_CONVERSION_CACHE))]
 
-    ext = ".yaml" if fmt in ("yaml", "yml") else ".json"
+    ext = _FORMAT_TO_EXT.get(fmt, ".yaml")
     with tempfile.NamedTemporaryFile(mode="w", suffix=ext, delete=False, encoding="utf-8") as f:
         f.write(content)
         tmp = f.name

@@ -56,6 +56,11 @@ FORMAT_MAP = {
     ".raml": "raml", ".apib": "apib", ".wsdl": "wsdl",
     ".graphql": "graphql", ".gql": "graphql",
 }
+FORMAT_TO_EXT = {
+    "yaml": ".yaml", "json": ".json",
+    "raml": ".raml", "apib": ".apib", "wsdl": ".wsdl",
+    "graphql": ".graphql",
+}
 
 conversion_jobs: Dict[str, Dict[str, Any]] = {}
 job_lock = asyncio.Lock()
@@ -958,7 +963,7 @@ async def get_spec_chunks(
         raise HTTPException(status_code=404, detail="Spec not found")
 
     def _convert():
-        ext = ".yaml" if spec.original_format in ("yaml", "yml", None) else ".json"
+        ext = FORMAT_TO_EXT.get(spec.original_format, ".yaml")
         with tempfile.NamedTemporaryFile(mode="w", suffix=ext, delete=False, encoding="utf-8") as f:
             f.write(spec.original_content)
             tmp = f.name
@@ -985,7 +990,7 @@ async def get_spec_tools(
         raise HTTPException(status_code=404, detail="Spec not found")
 
     def _convert():
-        ext = ".yaml" if spec.original_format in ("yaml", "yml", None) else ".json"
+        ext = FORMAT_TO_EXT.get(spec.original_format, ".yaml")
         with tempfile.NamedTemporaryFile(mode="w", suffix=ext, delete=False, encoding="utf-8") as f:
             f.write(spec.original_content)
             tmp = f.name
