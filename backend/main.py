@@ -22,7 +22,7 @@ import asyncio
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from uuid import uuid4
-from transformation import OpenAPIToMarkdown, normalize_raml
+from transformation import OpenAPIToMarkdown, normalize_raml, normalize_apib, normalize_wsdl, normalize_graphql, _safe_load_raml
 import httpx
 import logging
 import tiktoken
@@ -117,8 +117,17 @@ def load_openapi_spec(path: str, file_extension: str) -> Dict[str, Any]:
         content = f.read()
 
     if file_extension == ".raml":
-        raw = yaml.safe_load(content) or {}
+        raw = _safe_load_raml(content)
         return normalize_raml(raw)
+
+    if file_extension == ".apib":
+        return normalize_apib(content)
+
+    if file_extension == ".wsdl":
+        return normalize_wsdl(content)
+
+    if file_extension in (".graphql", ".gql"):
+        return normalize_graphql(content)
 
     if file_extension in (".yaml", ".yml"):
         return yaml.safe_load(content) or {}
@@ -126,7 +135,7 @@ def load_openapi_spec(path: str, file_extension: str) -> Dict[str, Any]:
     if file_extension == ".json":
         return json.loads(content)
 
-    # Best-effort for other formats: try YAML, then JSON, then wrap raw content
+    # Best-effort for unknown formats: try YAML, then JSON, then wrap raw content
     try:
         result = yaml.safe_load(content)
         if isinstance(result, dict):

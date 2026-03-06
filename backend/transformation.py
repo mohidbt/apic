@@ -16,6 +16,7 @@ import json
 import yaml
 import sys
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from collections import defaultdict
@@ -139,6 +140,17 @@ def _raml_resource_to_paths(key: str, resource: dict, default_media: str) -> Dic
     return paths
 
 
+def _safe_load_raml(content: str) -> Dict[str, Any]:
+    """YAML-load RAML content, tolerating !include and other custom tags."""
+    class _RAMLLoader(yaml.SafeLoader):
+        pass
+    _RAMLLoader.add_multi_constructor("!", lambda loader, suffix, node: None)
+    try:
+        return yaml.load(content, Loader=_RAMLLoader) or {}
+    except yaml.YAMLError:
+        return {}
+
+
 def normalize_raml(raml: Dict[str, Any]) -> Dict[str, Any]:
     """Convert a RAML-parsed dict into an OpenAPI-like structure."""
     spec: Dict[str, Any] = {"openapi": "3.0.0"}
@@ -162,8 +174,10 @@ def normalize_raml(raml: Dict[str, Any]) -> Dict[str, Any]:
 
     spec["info"] = info
 
-    if "baseUri" in raml:
-        spec["servers"] = [{"url": raml["baseUri"]}]
+    base_uri = raml.get("baseUri")
+    if base_uri:
+        url = base_uri["value"] if isinstance(base_uri, dict) and "value" in base_uri else str(base_uri)
+        spec["servers"] = [{"url": url}]
 
     default_media = raml.get("mediaType", "application/json")
     paths: Dict[str, Dict] = {}
@@ -180,6 +194,364 @@ def normalize_raml(raml: Dict[str, Any]) -> Dict[str, Any]:
         spec["components"] = {"schemas": schemas}
 
     return spec
+
+
+# ── API Blueprint normalizer ─────────────────────────────────────────
+
+_APIB_RESOURCE_RE = re.compile(r"^##\s+(.+?)\s*\[(/[^\]]*)\]\s*$")
+_APIB_ACTION_RE = re.compile(r"^###\s+(.+?)\s*\[(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\]\s*$")
+_APIB_RESPONSE_RE = re.compile(r"^\+\s+Response\s+(\d{3})\s*(?:\(([^)]*)\))?\s*$")
+_APIB_GROUP_RE = re.compile(r"^#\s+Group\s+(.+)$")
+_APIB_TITLE_RE = re.compile(r"^#\s+(?!Group\s)(.+)$")
+
+
+def normalize_apib(content: str) -> Dict[str, Any]:
+    """Convert API Blueprint text into an OpenAPI-like structure."""
+    spec: Dict[str, Any] = {"openapi": "3.0.0"}
+    info: Dict[str, Any] = {"title": "API", "version": "1.0.0"}
+    paths: Dict[str, Dict] = {}
+
+    current_tag = "Default"
+    current_path: Optional[str] = None
+    current_resource_name = ""
+    current_method: Optional[str] = None
+    current_action_name = ""
+    current_responses: Dict[str, Any] = {}
+
+    def _flush_action():
+        nonlocal current_method, current_responses
+        if current_path and current_method:
+            path_item = paths.setdefault(current_path, {})
+            op_id = f"{current_method.lower()}_{current_path.replace('/', '_').strip('_')}"
+            operation: Dict[str, Any] = {
+                "operationId": op_id,
+                "tags": [current_tag],
+                "responses": current_responses or {"200": {"description": "OK"}},
+            }
+            if current_action_name:
+                operation["summary"] = current_action_name
+            if current_resource_name:
+                operation["description"] = current_resource_name
+            path_item[current_method.lower()] = operation
+        current_method = None
+        current_responses = {}
+
+    for line in content.splitlines():
+        stripped = line.strip()
+
+        title_m = _APIB_TITLE_RE.match(stripped)
+        if title_m and info["title"] == "API":
+            info["title"] = title_m.group(1).strip()
+            continue
+
+        group_m = _APIB_GROUP_RE.match(stripped)
+        if group_m:
+            _flush_action()
+            current_tag = group_m.group(1).strip()
+            continue
+
+        resource_m = _APIB_RESOURCE_RE.match(stripped)
+        if resource_m:
+            _flush_action()
+            current_resource_name = resource_m.group(1).strip()
+            current_path = resource_m.group(2).strip()
+            continue
+
+        action_m = _APIB_ACTION_RE.match(stripped)
+        if action_m:
+            _flush_action()
+            current_action_name = action_m.group(1).strip()
+            current_method = action_m.group(2).strip()
+            continue
+
+        resp_m = _APIB_RESPONSE_RE.match(stripped)
+        if resp_m:
+            status = resp_m.group(1)
+            ct = resp_m.group(2) or "application/json"
+            current_responses[status] = {
+                "description": "",
+                "content": {ct: {"schema": {"type": "object"}}},
+            }
+            continue
+
+        # Standalone method line: `# GET /path` (simplest APIB form)
+        standalone = re.match(r"^#\s+(GET|POST|PUT|PATCH|DELETE)\s+(/\S+)\s*$", stripped)
+        if standalone:
+            _flush_action()
+            current_method = standalone.group(1)
+            current_path = standalone.group(2)
+            current_action_name = f"{current_method} {current_path}"
+            continue
+
+    _flush_action()
+
+    spec["info"] = info
+    spec["paths"] = paths
+    return spec
+
+
+# ── WSDL normalizer ──────────────────────────────────────────────────
+
+def normalize_wsdl(content: str) -> Dict[str, Any]:
+    """Convert WSDL XML into an OpenAPI-like structure."""
+    spec: Dict[str, Any] = {"openapi": "3.0.0"}
+    info: Dict[str, Any] = {"version": "1.0.0"}
+    paths: Dict[str, Dict] = {}
+    schemas: Dict[str, Any] = {}
+    servers: List[Dict[str, str]] = []
+
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return {
+            "openapi": "3.0.0",
+            "info": {"title": "WSDL Service", "version": "1.0.0"},
+            "paths": {},
+            "_raw_content": content,
+        }
+
+    # Strip namespace prefixes for easier traversal
+    ns_map: Dict[str, str] = {}
+    for elem in root.iter():
+        tag = elem.tag
+        if tag.startswith("{"):
+            ns_uri = tag[1:tag.index("}")]
+            local = tag[tag.index("}") + 1:]
+            if "xmlsoap.org/wsdl" in ns_uri and "wsdl" not in ns_map:
+                ns_map["wsdl"] = ns_uri
+            if "xmlsoap.org/wsdl/soap" in ns_uri and "soap" not in ns_map:
+                ns_map["soap"] = ns_uri
+
+    wsdl_ns = ns_map.get("wsdl", "http://schemas.xmlsoap.org/wsdl/")
+    soap_ns = ns_map.get("soap", "http://schemas.xmlsoap.org/wsdl/soap/")
+
+    info["title"] = root.attrib.get("name", "WSDL Service")
+
+    # Extract service endpoint URL
+    for service in root.iter(f"{{{wsdl_ns}}}service"):
+        for port in service.iter(f"{{{wsdl_ns}}}port"):
+            for addr in port:
+                loc = addr.attrib.get("location")
+                if loc:
+                    servers.append({"url": loc})
+
+    # Extract messages -> schemas
+    messages: Dict[str, List[Dict[str, str]]] = {}
+    for msg in root.iter(f"{{{wsdl_ns}}}message"):
+        msg_name = msg.attrib.get("name", "")
+        parts = []
+        for part in msg.iter(f"{{{wsdl_ns}}}part"):
+            pname = part.attrib.get("name", "")
+            ptype = part.attrib.get("type", "string")
+            if ":" in ptype:
+                ptype = ptype.split(":", 1)[1]
+            parts.append({"name": pname, "type": ptype})
+        messages[msg_name] = parts
+        if parts:
+            props = {}
+            for p in parts:
+                props[p["name"]] = {"type": _wsdl_type_map(p["type"])}
+            schemas[msg_name] = {"type": "object", "properties": props}
+
+    # Extract portType operations -> paths
+    for port_type in root.iter(f"{{{wsdl_ns}}}portType"):
+        for operation in port_type.iter(f"{{{wsdl_ns}}}operation"):
+            op_name = operation.attrib.get("name", "")
+            if not op_name:
+                continue
+            path = f"/{op_name}"
+            op: Dict[str, Any] = {
+                "operationId": op_name,
+                "summary": op_name,
+                "tags": [info["title"]],
+                "responses": {"200": {"description": "OK"}},
+            }
+
+            # Input message -> parameters
+            input_el = operation.find(f"{{{wsdl_ns}}}input")
+            if input_el is not None:
+                msg_ref = input_el.attrib.get("message", "")
+                if ":" in msg_ref:
+                    msg_ref = msg_ref.split(":", 1)[1]
+                parts = messages.get(msg_ref, [])
+                if parts:
+                    params = []
+                    for p in parts:
+                        params.append({
+                            "name": p["name"],
+                            "in": "query",
+                            "required": True,
+                            "schema": {"type": _wsdl_type_map(p["type"])},
+                        })
+                    op["parameters"] = params
+
+            # Output message -> response schema
+            output_el = operation.find(f"{{{wsdl_ns}}}output")
+            if output_el is not None:
+                msg_ref = output_el.attrib.get("message", "")
+                if ":" in msg_ref:
+                    msg_ref = msg_ref.split(":", 1)[1]
+                if msg_ref in schemas:
+                    op["responses"]["200"] = {
+                        "description": "OK",
+                        "content": {"application/xml": {"schema": {"$ref": f"#/components/schemas/{msg_ref}"}}},
+                    }
+
+            paths[path] = {"post": op}
+
+    spec["info"] = info
+    spec["paths"] = paths
+    if servers:
+        spec["servers"] = servers
+    if schemas:
+        spec["components"] = {"schemas": schemas}
+    return spec
+
+
+def _wsdl_type_map(xsd_type: str) -> str:
+    """Map XSD type names to OpenAPI types."""
+    mapping = {
+        "string": "string", "int": "integer", "integer": "integer",
+        "long": "integer", "short": "integer", "byte": "integer",
+        "float": "number", "double": "number", "decimal": "number",
+        "boolean": "boolean", "date": "string", "dateTime": "string",
+        "time": "string", "base64Binary": "string", "anyURI": "string",
+    }
+    return mapping.get(xsd_type, "string")
+
+
+# ── GraphQL normalizer ────────────────────────────────────────────────
+
+_GQL_TYPE_BLOCK_RE = re.compile(
+    r"^(?:type|input)\s+(\w+)(?:\s+implements\s+\w+)?\s*\{([^}]*)\}",
+    re.DOTALL | re.MULTILINE,
+)
+_GQL_ENUM_BLOCK_RE = re.compile(
+    r"^enum\s+(\w+)\s*\{([^}]*)\}",
+    re.DOTALL | re.MULTILINE,
+)
+_GQL_FIELD_RE = re.compile(
+    r"(\w+)\s*(?:\(([^)]*)\))?\s*:\s*(.+)"
+)
+_GQL_ARG_RE = re.compile(
+    r"(\w+)\s*:\s*([^,\)]+)"
+)
+
+
+_GQL_SCHEMA_RE = re.compile(
+    r"schema\s*\{([^}]*)\}", re.DOTALL
+)
+_GQL_ROOT_FIELD_RE = re.compile(
+    r"(query|mutation)\s*:\s*(\w+)"
+)
+_GQL_DOC_STRING_RE = re.compile(r'"""[\s\S]*?"""')
+
+
+def normalize_graphql(content: str) -> Dict[str, Any]:
+    """Convert GraphQL SDL into an OpenAPI-like structure."""
+    spec: Dict[str, Any] = {"openapi": "3.0.0"}
+    info: Dict[str, Any] = {"title": "GraphQL API", "version": "1.0.0"}
+    paths: Dict[str, Dict] = {}
+    schemas: Dict[str, Any] = {}
+
+    cleaned = _GQL_DOC_STRING_RE.sub("", content)
+
+    query_type_name = "Query"
+    mutation_type_name = "Mutation"
+    schema_match = _GQL_SCHEMA_RE.search(cleaned)
+    if schema_match:
+        for root_field in _GQL_ROOT_FIELD_RE.finditer(schema_match.group(1)):
+            if root_field.group(1) == "query":
+                query_type_name = root_field.group(2)
+            elif root_field.group(1) == "mutation":
+                mutation_type_name = root_field.group(2)
+
+    root_types = {query_type_name: ("get", "Queries"), mutation_type_name: ("post", "Mutations")}
+
+    for type_match in _GQL_TYPE_BLOCK_RE.finditer(cleaned):
+        type_name = type_match.group(1)
+        body = type_match.group(2)
+
+        if type_name in root_types:
+            http_method, tag = root_types[type_name]
+
+            for field_match in _GQL_FIELD_RE.finditer(body):
+                field_name = field_match.group(1)
+                args_str = field_match.group(2)
+                return_type = field_match.group(3).strip()
+
+                path = f"/{field_name}"
+                op: Dict[str, Any] = {
+                    "operationId": field_name,
+                    "summary": f"{type_name}.{field_name}",
+                    "tags": [tag],
+                    "responses": {
+                        "200": {
+                            "description": "OK",
+                            "content": {"application/json": {"schema": _gql_type_to_schema(return_type)}},
+                        }
+                    },
+                }
+
+                if args_str:
+                    params = []
+                    for arg_match in _GQL_ARG_RE.finditer(args_str):
+                        arg_name = arg_match.group(1)
+                        arg_type = arg_match.group(2).strip()
+                        required = arg_type.endswith("!")
+                        params.append({
+                            "name": arg_name,
+                            "in": "query",
+                            "required": required,
+                            "schema": _gql_type_to_schema(arg_type),
+                        })
+                    if params:
+                        op["parameters"] = params
+
+                paths[path] = {http_method: op}
+        else:
+            # Regular type -> schema
+            props: Dict[str, Any] = {}
+            required_fields: List[str] = []
+            for field_match in _GQL_FIELD_RE.finditer(body):
+                fname = field_match.group(1)
+                ftype = field_match.group(3).strip()
+                if ftype.endswith("!"):
+                    required_fields.append(fname)
+                props[fname] = _gql_type_to_schema(ftype)
+            schema: Dict[str, Any] = {"type": "object", "properties": props}
+            if required_fields:
+                schema["required"] = required_fields
+            schemas[type_name] = schema
+
+    for enum_match in _GQL_ENUM_BLOCK_RE.finditer(cleaned):
+        enum_name = enum_match.group(1)
+        values = [v.strip() for v in enum_match.group(2).split("\n") if v.strip()]
+        if values:
+            schemas[enum_name] = {"type": "string", "enum": values}
+
+    spec["info"] = info
+    spec["paths"] = paths
+    if schemas:
+        spec["components"] = {"schemas": schemas}
+    return spec
+
+
+def _gql_type_to_schema(gql_type: str) -> Dict[str, Any]:
+    """Map a GraphQL type annotation to an OpenAPI schema."""
+    t = gql_type.strip().rstrip("!")
+    scalar_map = {
+        "String": "string", "Int": "integer", "Float": "number",
+        "Boolean": "boolean", "ID": "string",
+    }
+    # List type [Foo!] or [Foo]
+    list_m = re.match(r"^\[(.+)\]$", t)
+    if list_m:
+        inner = list_m.group(1).strip().rstrip("!")
+        return {"type": "array", "items": _gql_type_to_schema(inner)}
+    if t in scalar_map:
+        return {"type": scalar_map[t]}
+    return {"type": "string", "description": f"(GraphQL type: {t})"}
 
 
 class OpenAPIToMarkdown:
@@ -205,8 +577,17 @@ class OpenAPIToMarkdown:
         suffix = self.spec_path.suffix.lower()
 
         if suffix == '.raml':
-            raw = yaml.safe_load(content) or {}
+            raw = _safe_load_raml(content)
             return normalize_raml(raw)
+
+        if suffix == '.apib':
+            return normalize_apib(content)
+
+        if suffix == '.wsdl':
+            return normalize_wsdl(content)
+
+        if suffix in ('.graphql', '.gql'):
+            return normalize_graphql(content)
 
         if suffix in ('.yaml', '.yml'):
             return yaml.safe_load(content) or {}
