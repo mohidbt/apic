@@ -1,0 +1,1649 @@
+#%RAML 1.0
+title: Hotels Search API
+version: v3
+mediaType: application/json
+baseUri: /api/3.0
+description: Hotels Search API
+
+documentation:
+  - title: Search for hotels
+    content: |
+      ## Overview
+      The hotels search API is used to search for hotels by various criteria to retrieve detailed information about the hotels, including rates and availability.
+      The API supports both single and multiple hotel searches, providing comprehensive details for specific hotels or a list of hotels within a given destination.
+      
+      ## Constants 
+      Constant mappings, such as hotel features, tags, themes, chains and place/property types can be retrieved using the Static Data Feeds API
+      
+      ## Query completion 
+      The result of hotel searches depends on the `onlyIfComplete` query parameter.
+
+      When this parameter is set to `true`, the query will return results only after the server has completed gathering responses from all the different providers.
+      In this case, the HTTP status response will be `202 Accepted`, and the client will need to repeat the requests until an HTTP status response of `200 Ok` is returned.
+      If the `onlyIfComplete` parameter is not set or set to `false`, the server will return the results gathered so far.
+      The client can determine whether the query has completed based on the value of the `isCompleted` property in the response object
+      
+      ## Availability and rates inclusion
+      If neither check-in, nor check-out dates are provided, then all hotels in the destination will be searched, without including availability and rates
+
+/hotel:
+  displayName: Single hotel search
+  description: |
+    The single hotel search retrieves comprehensive details for a specific hotel, including all available rates based on the provided criteria.
+    
+    Typically, this endpoint is used when a user selects a hotel from the results of a multiple hotel search.
+    By default, the response contains minimal detail; the `responseOptions` parameter can be used to request results with more detail
+  get:
+    queryParameters:
+      apiKey:
+        type: string
+        description: API key assigned to the affiliate
+      userTrackId:
+        type: string
+        description: |
+          Client-specific unique identifier to identify this user. 
+          
+          There are no restrictions on this value, but it should be unique to the client and remain the same for the duration of the client’s session
+      hotel:
+        type: HotelEntityKey
+        description: Key of the hotel to search
+      onlyIfComplete?:
+        type: boolean
+        default: false
+        description: |
+          Specifies whether the server should respond with a `202 Accepted` status code for incomplete queries.
+          
+          Refer to `Query completion` section for more details
+      searchTimeout?:
+        type: number
+        description: |
+          Maximum time in milliseconds to wait for the search to complete.
+          
+          If the search does not complete within the specified time, only the results gathered until that point will be returned
+      checkin?:
+        type: date-only
+        description: |
+          Check-in date
+      checkout?:
+        type: date-only
+        description: |
+          Check-out date
+      rooms?:
+        type: HotelRoomGuests
+        description: |
+          Number of rooms and guests.
+          
+          Required when searching with check-in and check-out dates
+      languageCode?:
+        type: LanguageCode
+        description: Language in which the results should be returned
+        default: EN
+      currencyCode?:
+        type: CurrencyCode
+        description: |
+          Currency in which rates should be returned.
+
+          Defaults to the currency based on user's location
+      includeTaxesInTotal?:
+        type: boolean
+        description: |
+          Specifies whether rates should include taxes (VAT/sales tax, not local taxes payable at the hotel). 
+          
+          If not specified, the standard market-specific logic based on client IP address will be applied
+      includeLocalTaxesInTotal?:
+        type: boolean
+        description: |
+          Specifies whether rates should include local taxes (i.e. taxes and fees payable at the hotel). 
+          
+          If not specified, the standard-market-specific logic based on client IP address will be applied. 
+          
+          All taxes are included when this parameter is set to true
+      responseOptions?:
+        type: SingleHotelSearchResponseOptions
+        description: Optional details to include in the response
+    responses:
+      200:
+        body:
+          application/json:
+            type: SingleHotelSearchResponse
+
+/hotels:
+  displayName: Multiple hotel search
+  description: |
+    The multiple hotel search returns rates and availability for all hotels within a given destination.
+    
+    By default, the response contains minimal detail; the `responseOptions` parameter can be used to request results with more detail
+  is: [ hasStandardErrors ]
+  get:
+    queryParameters:
+      apiKey:
+        type: string
+        description: API key assigned to the affiliate
+      userTrackId:
+        type: string
+        description: |
+          Client-specific unique identifier to identify this user. 
+          
+          There are no restrictions on this value, but it should be unique to the client and remain the same for the duration of the client’s session
+      destination:
+        type: EntityKey
+        description: Key of the destination to search
+      onlyIfComplete?:
+        type: boolean
+        default: false
+        description: |
+          Specifies whether the server should respond with a `202 Accepted` status code for incomplete queries.
+          
+          Refer to `Query completion` section for more details
+      searchTimeout?:
+        type: number
+        description: |
+          Maximum time in milliseconds to wait for the search to complete.
+
+          If the search does not complete within the specified time, only the results gathered until that point will be returned
+      checkin?:
+        type: date-only
+        description: |
+          Check-in date
+      checkout?:
+        type: date-only
+        description: |
+          Check-out date
+      rooms?:
+        type: HotelRoomGuests
+        description: Number of rooms and guests
+      languageCode?:
+        type: LanguageCode
+        description: Language in which the results should be returned
+        default: EN
+      currencyCode?:
+        type: CurrencyCode
+        description: |
+          Currency in which rates should be returned.
+
+          Defaults to the currency based on user's location
+        pattern: "[A-Z]{3}"
+      minPrice?:
+        type: number
+        format: double
+        description: Minimum price of the hotel
+      maxPrice?:
+        type: number
+        format: double
+        description: Maximum price of the hotel
+      starRating?:
+        type: PipeDelimitedIntegerList
+        description: List of star ratings to filter the results by
+      hotelRating?:
+        type: PipeDelimitedIntegerList
+        description: |
+          List of hotel ratings to filter the results by. 
+
+          To limit the results to officially-rated ratings, set `hotelRatingExcludeSelfRated` query parameter to `true`
+      hotelRatingExcludeSelfRated?:
+        type: boolean
+        default: false
+        description: Indicates whether self-rated hotels should be excluded from the results when filtering by `hotelRating` parameter
+      propertyTypes?:
+        type: PipeDelimitedIntegerList
+        description: List of property types to filter the results by
+      features?:
+        type: PipeDelimitedIntegerList
+        description: List of facilities/amenities to filter the results by
+      featuresFilterMode?:
+        type: string
+        description: Logical operation which should be used in features filtering
+        enum: [ AND, OR ]
+        default: AND
+      themes?:
+        type: PipeDelimitedIntegerList
+        description: List of hotel themes to filter the results by
+      chains?:
+        type: PipeDelimitedIntegerList
+        description: List of hotel chains to filter the results by
+      guestRatings?:
+        type: PipeDelimitedIntegerList
+        description: |
+          List of guest ratings to filter the results by.
+          
+          To include unrated hotels, set the value to `-1`
+      deals?:
+        type: PipeDelimitedIntegerList
+        description: List of deal types to filter the results by
+      hotelName?:
+        type: string
+        description: |
+          Name of the hotel to search for.
+          
+          Limits results to hotels that contain the specified word or phrase in their name
+      sortField?:
+        type: SortField
+        default: popularity
+        description: Field to use for sorting the results
+      sortDirection?:
+        type: SortDirection
+        default: ascending
+        description: Direction to use for sorting the results
+      pageIndex?:
+        type: number
+        default: 0
+        description: Index of the result page to return
+      pageSize?:
+        type: number
+        default: 25
+        minimum: 1
+        maximum: 250
+        description: Number of results to return per page
+      includeTaxesInTotal?:
+        type: boolean
+        description: |
+          Specifies whether rates should include taxes (VAT/sales tax, not local taxes payable at the hotel). 
+          
+          If not specified, the standard market-specific logic based on client IP address will be applied
+      includeLocalTaxesInTotal?:
+        type: boolean
+        description: |
+          Specifies whether rates should include local taxes (i.e. taxes and fees payable at the hotel). 
+          
+          If not specified, the standard-market-specific logic based on client IP address will be applied. 
+          
+          All taxes will be included when this option is set to true
+      preferredHotels?:
+        type: PipeDelimitedIntegerList
+        description: |
+          List of hotel identifiers in the preferred sort order, limited to 50 hotels
+          
+          This parameter is only used for sorting, it does not have any impact on the search results
+      summaryOnly?:
+        type: boolean
+        description: |
+          Indicates whether only the summary of the search should be returned, excluding the hotel results.
+          It's designed for retrieving a summary of the details of an already completed search (e.g. for returning hotel counts for filters)
+      responseOptions?:
+        type: MultipleHotelSearchResponseOptions
+        description: Optional details to include in the response
+    responses:
+      200:
+        body:
+          application/json:
+            type: MultipleHotelSearchResponse
+
+/hotels/basic:
+  displayName: Basic multiple hotel search
+  description: |
+    The basic multiple hotel search returns a list of hotels within a given destination, with minimal details.
+    
+    This endpoint is designed for use cases where only basic information is required, such as when displaying results on a map
+  is: [ hasStandardErrors ]
+  get:
+    queryParameters:
+      apiKey:
+        type: string
+        description: API key assigned to the affiliate
+      userTrackId:
+        type: string
+        description: |
+          Client-specific unique identifier to identify this user. 
+          
+          There are no restrictions on this value, but it should be unique to the client and remain the same for the duration of the client’s session
+      destination:
+        type: EntityKey
+        description: Key of the destination to search
+      onlyIfComplete?:
+        type: boolean
+        default: false
+        description: |
+          Specifies whether the server should respond with a `202 Accepted` status code for incomplete queries.
+          
+          Refer to `Query completion` section for more details
+      searchTimeout?:
+        type: number
+        description: |
+          Maximum time in milliseconds to wait for the search to complete.
+
+          If the search does not complete within the specified time, only the results gathered until that point will be returned
+      checkin?:
+        type: date-only
+        description: |
+          Check-in date
+      checkout?:
+        type: date-only
+        description: |
+          Check-out date
+      rooms?:
+        type: HotelRoomGuests
+        description: Number of rooms and guests
+      languageCode?:
+        type: LanguageCode
+        description: Language in which the results should be returned
+        default: EN
+      currencyCode?:
+        type: CurrencyCode
+        description: |
+          Currency in which rates should be returned.
+
+          Defaults to the currency based on user's location
+      minPrice?:
+        type: number
+        format: double
+        description: Minimum price of the hotel
+      maxPrice?:
+        type: number
+        format: double
+        description: Maximum price of the hotel
+      starRating?:
+        type: PipeDelimitedIntegerList
+        description: List of star ratings to filter the results by
+      hotelRating?:
+        type: PipeDelimitedIntegerList
+        description: |
+          List of hotel ratings to filter the results by. 
+
+          To limit the results to officially-rated ratings, set `hotelRatingExcludeSelfRated` query parameter to `true`
+      hotelRatingExcludeSelfRated?:
+        type: boolean
+        default: false
+        description: Indicates whether self-rated hotels should be excluded from the results when filtering by `hotelRating` parameter
+      propertyTypes?:
+        type: PipeDelimitedIntegerList
+        description: List of property types to filter the results by
+      features?:
+        type: PipeDelimitedIntegerList
+        description: List of facilities/amenities to filter the results by
+      themes?:
+        type: PipeDelimitedIntegerList
+        description: List of hotel themes to filter the results by
+      chains?:
+        type: PipeDelimitedIntegerList
+        description: List of hotel chains to filter the results by
+      guestRatings?:
+        type: PipeDelimitedIntegerList
+        description: |
+          List of guest ratings to filter the results by.
+          
+          To include unrated hotels, set the value to `-1`
+      deals?:
+        type: PipeDelimitedIntegerList
+        description: List of deal types to filter the results by
+      hotelName?:
+        type: string
+        description: |
+          Name of the hotel to search for.
+          
+          Limits results to hotels that contain the specified word or phrase in their name
+      sortField?:
+        type: SortField
+        default: popularity
+        description: Field to use for sorting the results
+      sortDirection?:
+        type: SortDirection
+        default: ascending
+        description: Direction to use for sorting the results
+      pageIndex?:
+        type: number
+        default: 0
+        description: Index of the result page to return
+      pageSize?:
+        type: number
+        default: 25
+        minimum: 1
+        maximum: 250
+        description: Number of results to return per page
+      includeTaxesInTotal?:
+        type: boolean
+        description: |
+          Specifies whether rates should include taxes (VAT/sales tax, not local taxes payable at the hotel). 
+          
+          If not specified, the standard market-specific logic based on client IP address will be applied
+      includeLocalTaxesInTotal?:
+        type: boolean
+        description: |
+          Specifies whether rates should include local taxes (i.e. taxes and fees payable at the hotel). 
+          
+          If not specified, the standard-market-specific logic based on client IP address will be applied. 
+          
+          All taxes will be included when this option is set to true
+      preferredHotels?:
+        type: PipeDelimitedIntegerList
+        description: |
+          List of hotel identifiers in the preferred sort order, limited to 50 hotels
+          
+          This parameter is only used for sorting, it does not have any impact on the search results
+    responses:
+      200:
+        body:
+          application/json:
+            type: BasicMultipleHotelSearchResponse
+
+types:
+  EntityKey:
+    type: string
+    description: |
+      Entity keys are used to reference an entity for searching and are typically made up of a type
+      identifier and an entity identifier separated by a colon. In most cases, entity keys are defined by
+      the system. There are two special cases where this does not apply: custom locations and
+      polygons.
+      
+      To search a custom latitude/longitude, use the format `klatlon:[latitude],[longitude]`.
+      
+      To search a polygon, use the format `kpolygon:[latitude],[longitude];[latitude],[longitude];
+      [latitude],[longitude];[latitude],[longitude][:maximumHotels]`. There are certain limitations when
+      searching by polygon:
+      
+      - The maximum length of the entity key is 20,000 characters;
+      - There must be at least 3 points;
+      - The first three points must be unique;
+      - The maximum length of any side of the envelope (rectangle) that contains the polygon is 200km;
+      - By default, a maximum of 200 hotels will be returned (if there are more than 200 hotels within the polygon, the most popular 200 will be returned). 
+        The optional `maximumHotels` suffix (e.g. :389) can be used to specify that up to 999 hotels should be returned.
+    examples:
+      latlonKey: "klatlon:34.5445,-18.3434"
+      polygonKey: "kpolygon:34.1,-18.3;34.1,-18.4;34.2,-18.4;34.2,-18.3;34.1,-18.3"
+      placeKey: "kplace:58075"
+      hotelKey: "khotel:1000"
+  HotelEntityKey:
+    type: string
+    description: |
+      Key used to reference a hotel entity for searching that is made up of a type
+      identifier and an entity identifier separated by a colon (`khotel:[hotelId]`)
+    examples:
+      hotelKey: "khotel:1000"
+  HotelRoomGuests:
+    type: string
+    description: |
+      Formatted string used to specify the number of rooms and guests.
+      
+      Format: {adult_number}:{children_ages...}|{adult_number}:{children_ages...}|...
+    examples:
+      example1: |
+        "3" - 1 room, 3 adults and no children
+      example2: |
+        "2:4" - 1 room, 2 adults and one child aged 4
+      example3: |
+        "1:0,13,16" - 1 room, 1 adult and 3 children (aged 0, 13 and 16)
+      example4: |
+        "1:4,6|3" - 2 rooms, one with 1 adult and 2 children ages 4 and 6 and the other with 3 adults and no children
+      example5: |
+        "1|2|3" - 3 rooms, one with 1 adult, second with 2 adults and third with 3 adults
+  HotelPolicy:
+    type: object
+    description: Hotel policy details
+    properties:
+      code:
+        type: string
+        description: Policy code
+      name:
+        type: string
+        description: Policy name
+      description:
+        type: string
+        description: Policy description
+    examples:
+      checkin:
+        code: checkin
+        name: Check-in
+        description: From 2:00 pm
+      checkout:
+        code: checkout
+        name: Check-out
+        description: Prior to 12:00 pm
+  HotelFeatures:
+    type: number[]
+    description: Hotel feature identifiers
+    example: [ 230, 7, 26, 11, 77 ]
+  HotelFeatureSummary:
+    type: object
+    description: Hotel feature summary
+    properties:
+      name:
+        type: string
+        description: Feature name
+      description:
+        type: string
+        description: Feature description
+    example:
+      name: Policy
+      description: Pets allowed on request. Charges may apply.
+  HotelFeatureTag:
+    type: object
+    description: Hotel features by tag
+    properties:
+      tag:
+        type: string
+        description: Feature tag name
+      features:
+        type: HotelFeatures
+        description: List of feature identifiers that are associated with the tag
+    example:
+      tag: parking_transport
+      features: [ 230, 77, 895 ]
+  HotelImage:
+    type: object
+    description: Hotel image details
+    properties:
+      large:
+        type: string
+        description: URL of the large hotel image
+      small?:
+        type: string
+        description: URL of the small hotel image
+    example:
+      large: "https://www.kayak.ch/h/run/api/image?url=/himg/c7/00/32/expedia_group-2589314-56e9e3-056459.jpg&maxheight=460"
+  SearchableHotelPlace:
+    type: object
+    description: Hotel place details
+    properties:
+      id:
+        type: number
+        description: Place unique identifier
+      key:
+        type: EntityKey
+        description: Place key
+      href:
+        type: string
+        description: Absolute URL to multiple hotel search for this place
+      name:
+        type: string
+        description: Place name
+      fullName:
+        type: string
+        description: Place full name
+      latitude:
+        type: number
+        format: double
+        description: Place latitude
+      longitude:
+        type: number
+        format: double
+        description: Place longitude
+      placeCountryCode:
+        type: CountryCode
+      isSearchable:
+        type: boolean
+        description: Indicates whether the place is searchable
+    example:
+      id: 2674868
+      key: kplace:2674868
+      href: "https://sandbox-en-us.kayakaffiliates.com/api/3.0/hotels?checkin=2025-01-01&checkout=2025-01-10&rooms=2&onlyIfComplete=false&userTrackId=trackId&apiKey=key&languageCode=EN&currencyCode=KRW&searchtimeout=5000&responseOptions=place&destination=kplace%3A2674868"
+      name: Les Halles
+      fullName: Les Halle
+      latitude: 48.8619338920718
+      longitude: 2.34699726104736
+      placeCountryCode: FR
+      isSearchable: true
+  HotelReviewAspect:
+    type: object
+    description: Hotel review aspect details
+    properties:
+      text:
+        type: string
+        description: Text about a particular aspect of the review
+      polarity:
+        type: number
+        description: Specifies whether the aspect is positive (1), neutral (0), or negative (-1)
+    example:
+      text: friendly staff
+      polarity: 1
+  HotelReviewGuestRating:
+    type: object
+    description: Hotel guest rating details
+    properties:
+      //:
+        type: number
+        format: double
+    example:
+      LOCATION: 9.6
+      OVERALL: 8.5
+      COMFORT: 8.7
+  BasicHotelRating:
+    type: object
+    description: Basic hotel rating details
+    properties:
+      key:
+        type: number
+        description: Rating
+      value:
+        type: number
+        description: Number of ratings
+    example:
+      value:
+        key: 5
+        value: 50
+  DetailedHotelRating:
+    type: object
+    description: Detailed hotel rating details
+    properties:
+      key:
+        type: number
+        description: Rating
+      value:
+        type: object
+        properties:
+          officiallyRated:
+            type: number
+            description: Number of officially rated ratings
+          selfRated:
+            type: number
+            description: Number of self-rated ratings
+    example:
+      value:
+        key: 5
+        value:
+          officiallyRated: 0
+          selfRated: 0
+  HotelPriceRange:
+    type: object
+    description: Hotel price range details
+    properties:
+      key:
+        type: number
+        description: Price range key
+      value:
+        type: number
+        description: Number of hotels in this price range
+    example:
+      value:
+        key: 100
+        value: 0
+  HotelReviews:
+    type: object
+    description: Hotel review details
+    properties:
+      numberOfReviews:
+        type: number
+        description: Number of reviews
+      sentiment:
+        type: string
+        description: Review sentiment
+      quotes:
+        type: HotelReviewAspect[]
+        description: Review quotes
+      aspects:
+        type: HotelReviewAspect[]
+        description: Review aspects
+      reviewerTypes:
+        type: HotelReviewerType[]
+        description: Aspects and number of reviews by reviewer type
+      guestRatings:
+        type: HotelReviewGuestRating
+        description: |
+          Guest ratings.
+          
+          A rating of `-1` is used to indicate hotels without a rating
+    example:
+      numberOfReviews: 1
+      sentiment: Fabulous, 8.5
+      quotes: []
+      aspects: []
+      reviewerTypes: []
+      guestRatings:
+        LOCATION: 9.6
+        OVERALL: 8.5
+        COMFORT: 8.7
+  HotelPlace:
+    type: object
+    description: Hotel place details
+    properties:
+      key:
+        type: EntityKey
+        description: Key of place
+      name:
+        type: string
+        description: Name of the place
+    example:
+      key: khotel:2589314
+      name: citizenM Tower of London
+  HotelRate:
+    type: object
+    description: Hotel rate details
+    properties:
+      roomName:
+        type: string
+        description: Name of the room
+      totalRate:
+        type: number
+        format: double
+        description: Total rate for the room
+      isCheapestRate:
+        type: boolean
+        description: Indicates whether this is the cheapest rate available
+      hasFreeCancellation:
+        type: boolean
+        description: Indicates whether the room has free cancellation
+      canPayLater:
+        type: boolean
+        description: Indicates whether the payment can be made later
+      isBundledRate:
+        type: boolean
+        description: Indicates whether the rate is bundled with other services
+      inclusions:
+        type: InclusionType[]
+        description: A collection of complimentary features and services provided as part of the room booking fee
+      availableRooms:
+        type: number
+        description: Number of available rooms
+      providerIndex:
+        type: number
+        description: Index of the provider
+      isDeprioritisedForExcludedCharges:
+        type: boolean
+        description: Indicates whether the rate is deprioritized for excluded charges
+      bookUri:
+        type: string
+        description: Link to the provider's booking page
+      rateBreakdown?:
+        type: HotelRateBreakdown
+        description: |
+          Breakdown of the room rates
+          
+          Optionally included by passing `rateBreakdown` value to the `responseOptions` parameter
+    example:
+      roomName: Club-Zimmer, 1 Queen-Bett
+      totalRate: 229204.52
+      isCheapestRate: true
+      hasFreeCancellation: true
+      canPayLater: true
+      isBundledRate: false
+      inclusions: [ ]
+      availableRooms: 9
+      providerIndex: 0
+      isDeprioritisedForExcludedCharges: false
+      bookUri: "https://sandbox-en-us.kayakaffiliates.com/in?cluster=5&a=hctest&p=&cc=ch&mc=KRW&lc=EN&url=%2Fbook%2Fhotel%3Fcode%3DePGkPeZiuU.WfxetRcZFwD1Q7IXP-_L1Py0tDCcY098_zlHXEqg5Jg.8011.34725.MTczNTAxNjQwMDAwMF4xNzM1MTg5MjAwMDAwXjFeMl4%3D%26h%3D15934f2d29fb%26sub%3D0%26_pt_%3D1&utid=Y2JlZWVkZTctOGQwMy00YjNmLTk0YjItNmEyOTgyNmIwZGFj&cookieOverrides=e0r-vV17CTyHTY65FOuSfpuiSi532wQJ5efdFnxzSuKhG6hIIkTjCcazxC1bHSnyNDLZSN6LSQ92RWM8UC2QrTiqSq74qWiWmqrB6bGpmBAMa6U3OZ4OyZLfeXwRDHnM1tHUoT5wROmaDjmSIwQkTfyq0BGn6FcFYK-0mxtf-FM"
+  HotelReviewerType:
+    type: object
+    description: Hotel reviewer type details
+    properties:
+      type:
+        type: number
+        description: Reviewer type
+      numberOfReviews:
+        type: number
+        description: Count of reviews supplied by this reviewer type
+      aspects:
+        type: HotelReviewAspect[]
+        description: Aspects popular with this review type
+      name:
+        type: string
+        description: Localized reviewer type name
+    example:
+      type: 3
+      numberOfReviews: 1
+      aspects: [ ]
+      name: Business travelers
+  HotelRateBreakdown:
+    type: object
+    description: Hotel rate breakdown details
+    properties:
+      baseRate:
+        type: number
+        format: double
+        description: Base rate of the room
+      taxes:
+        type: number
+        format: double
+        description: Taxes applicable to the room rate
+      localTaxes?:
+        type: number
+        format: double
+        description: Local taxes applicable to the room rate
+    example:
+      baseRate: 417540
+      taxes: 68684
+      localTaxes: 85796
+  HotelItemReference:
+    type: object
+    description: Hotel item reference details
+    properties:
+      id:
+        type: number
+        description: Id of the item
+      name:
+        type: string
+        description: Name of the item
+      hotelCount:
+        type: number
+        description: Number of hotels associated with this item
+    example:
+      id: 524
+      name: 25hours Hotels
+      hotelCount: 0
+  HotelDestination:
+    type: object
+    description: Hotel destination details
+    properties:
+      id:
+        type: number
+        description: Unique identifier of the destination
+      key:
+        type: string
+        description: Key of the destination
+      href:
+        type: string
+        description: Absolute URL to the multiple hotel search for this destination
+      type:
+        type: number
+        description: Type of the destination
+      name:
+        type: string
+        description: Name of the destination
+      fullName:
+        type: string
+        description: Full name of the destination
+      isSearchable:
+        type: boolean
+        description: Indicates whether the destination is searchable
+      latitude:
+        type: number
+        format: double
+        description: Latitude of the destination
+      longitude:
+        type: number
+        format: double
+        description: Longitude of the destination
+      hasBoundary:
+        type: boolean
+        description: Indicates whether the destination has a boundary
+      radius:
+        type: number
+        description: Radius of the destination
+      maximumRadius:
+        type: number
+        description: Maximum radius of the destination
+    example:
+      id: 58075
+      key: kplace:58075
+      href: "https://sandbox-en-us.kayakaffiliates.com/api/3.0/hotels?apiKey=key&checkin=2024-12-24&checkout=2024-12-26&rooms=2&userTrackId=trackId&currencyCode=KRW&responseOptions=filter%2Ctoprates%2Cdestination&includeLocalTaxesInTotal=true&destination=kplace%3A58075"
+      type: 2
+      name: Boston
+      fullName: Boston, Massachusetts, United States
+      isSearchable: false
+      latitude: 42.360903491390246
+      longitude: -71.05889023544313
+      hasBoundary: true
+      radius: 0
+      maximumRadius: 0
+  HotelProvider:
+    type: object
+    description: Hotel provider details
+    properties:
+      code:
+        type: string
+        description: Provider code
+      name:
+        type: string
+        description: Provider name
+      logo:
+        type: string
+        description: URL to the provider's logo
+      isDirect:
+        type: boolean
+        description: Indicates whether the provider is a direct provider. Direct providers are typically hotel chains
+      isLanguageSupported:
+        type: boolean
+        description: Indicates whether the provider supports the requested language
+      cashback?:
+        type: ProviderCashback
+        description: Cashback details for provider. Populated when the affiliate supports cashback.
+    example:
+      code: BOOKINGDOTCOMAFFILIATE
+      name: Booking.com
+      logo: "https://content.r9cdn.net/rimg/provider-logos/hotels/h/BOOKINGDOTCOM.png?crop=false&width=88&height=31&fallback=default2.png&_v=1233faf051a0a6b9d9807846b1316f74"
+      isDirect: false
+      isLanguageSupported: true
+  ProviderCashback:
+    type: object
+    description: Cashback configuration details for a booking option.
+    properties:
+      type:
+        type: string
+        description: Type of cashback (e.g., percentage, fixed amount).
+        enum: [ "PERCENTAGE", "FLAT" ]
+      value:
+        type: number
+        format: double
+        description: Cashback value (percentage or fixed amount).
+      cap?:
+        type: number
+        format: double
+        description: Maximum cashback cap, if applicable.
+      currency:
+        type: CurrencyCode
+        description: Currency code for the cashback amount and cap.
+  SortField:
+    type: string
+    description: Field to use for sorting the results
+    enum: [ consumerRating, distance, name, minRate, popularity, rating ]
+  SortDirection:
+    type: string
+    description: Direction to use for sorting the results
+    enum: [ ascending, descending ]
+  PipeDelimitedIntegerList:
+    type: string
+    description: Pipe-delimited list of integers
+    example: 1|2|3|4
+  CurrencyCode:
+    type: string
+    pattern: "[A-Z]{3}"
+    description: |
+      ISO 4217 code identifier for currency. 
+      Currency codes are composed of a country's two-character Internet country code plus a third character denoting the currency unit
+    example: USD
+  LanguageCode:
+    type: string
+    pattern: "[A-Z]{2}"
+    description: ISO 639 code identifier for language
+    example: DE
+  CountryCode:
+    type: string
+    pattern: "[A-Z]{2}"
+    description: ISO 3166 code identifier for country
+    example: KR
+  InclusionType:
+    type: number
+    minimum: 0
+    maximum: 4
+    description: |
+        Inclusion type. The value is used to determine the type of inclusion.
+        
+        0 - Breakfast included
+        1 - Lunch included
+        2 - Dinner included
+        3 - Meals included
+        4 - All inclusive
+  HotelResult:
+    type: object
+    description: Hotel search result details
+    properties:
+      id:
+        type: number
+        description: Unique identifier for the hotel
+      key:
+        type: EntityKey
+        description: Hotel key
+      name:
+        type: string
+        description: Hotel name
+      address:
+        type: string
+        description: Hotel address
+      hotelCountryCode:
+        type: CountryCode
+        description: Country code for the hotel's country
+      latitude:
+        type: number
+        format: double
+        description: Latitude of the hotel's location
+      longitude:
+        type: number
+        format: double
+        description: Longitude of the hotel's location
+      starRating:
+        type: number
+        description: Hotel star rating
+      isSelfRated:
+        type: boolean
+        description: Indicates whether the hotel is self-rated
+      lowestRate:
+        type: number | nil
+        description: Lowest rate available for the hotel
+      href:
+        type: string
+        description: Absolute URL to this hotel's search
+      distance:
+        type: number
+        description: |
+          Distance from the search location to the hotel. 
+          
+          kpolygon - distance is calculated from hotel to polygon center;
+          klatlon - distance is calculated from hotel to lat/lon;
+          kplace - distance is calculated from hotel to given place;
+          khotels, khotel - distance is not set;
+      isWithinBoundary:
+        type: boolean
+        description: Indicates whether the hotel is within the search boundary. Always false.
+      isGreatValue:
+        type: boolean
+        description: |
+          Indicates whether the hotel is considered a great value. It's true if any of the booking options have
+          custom rate (e.g, mobile rate or desktop rate only), is under priced or opaque.
+      propertyType:
+        type: number
+        description: Property type
+      numberOfProviders:
+        type: number
+        description: Number of providers offering rates for the hotel
+      numberOfRates:
+        type: number
+        description: Number of rates available for the hotel
+      guestRating:
+        type: number
+        description: Hotel guest rating
+      numberOfReviews:
+        type: number
+        description: Number of reviews for the hotel
+      highestRate:
+        type: number | nil
+        description: Highest rate available for the hotel
+      licenseNumber?:
+        type: string
+        description: License number for the property
+      rates?:
+        type: HotelRate[]
+        description: |
+          Rates for the hotel.
+          Booking options are returned sorted based on our recommendations to provide the most relevant options first.
+          Optionally included by passing `topRates` or `multipleHotelsAllRates` value to the `responseOptions` parameter
+      wellKnownPlace?:
+        type: HotelPlace
+        description: |
+          Well-known place information that the hotel belongs to.
+
+          Optionally included by passing `hotelWellKnownPlace` value to the `responseOptions` parameter
+      images?:
+        type: HotelImage[]
+        description: |
+          Hotel images.
+          
+          Optionally included by passing `images` value to the `responseOptions` parameter
+      place?:
+        type: HotelPlace
+        description: |
+          Hotel place information.
+          
+          Optionally included by passing `hotelPlace` value to the `responseOptions` parameter
+      reviewQuotes?:
+        type: string[]
+        description: |
+          List of quotes from reviews
+          
+          Optionally included by passing `reviews` value to the `responseOptions` parameter
+      guestRatingSentiment?:
+        type: string
+        description: |
+          Guest rating sentiment.
+          
+          Optionally included by passing `reviews` value to the `responseOptions` parameter
+    example:
+      id: 2589314
+      key: khotel:2589314
+      name: citizenM Tower of London
+      address: 40 Trinity Square
+      hotelCountryCode: GB
+      latitude: 51.51018
+      longitude: -0.07687
+      starRating: 4
+      isSelfRated: false
+      images:
+        - large: "https://www.kayak.ch/h/run/api/image?url=/himg/c7/00/32/expedia_group-2589314-56e9e3-056459.jpg&maxheight=460"
+          small: "https://www.kayak.ch/h/run/api/image?url=/himg/c7/00/32/expedia_group-2589314-56e9e3-056459.jpg&maxheight=230"
+      lowestRate: 1213.11
+      href: "https://sandbox-en-us.kayakaffiliates.com/api/3.0/hotel?apiKey=key&checkin=2025-01-01&checkout=2025-01-10&rooms=2&pageSize=2&responseOptions=toprates%2Cimages&userTrackId=trackId&pageSize=1&hotel=khotel%3A2589314"
+      distance: 0
+      isWithinBoundary: false
+      isGreatValue: false
+      propertyType: 0
+      numberOfProviders: 4
+      numberOfRates: 7
+      guestRating: 8.6
+      numberOfReviews: 3118
+      highestRate: 1429.74
+      rates:
+        - roomName: King-Zimmer
+          totalRate: 1215.27
+          isCheapestRate: false
+          hasFreeCancellation: false
+          canPayLater: false
+          isBundledRate: false
+          inclusions: [ ]
+          availableRooms: 10
+          providerIndex: 1
+          isDeprioritisedForExcludedCharges: false
+          bookUri: "https://sandbox-en-us.kayakaffiliates.com/in?cluster=5&a=kan_316089_592117&p=&cc=ch&mc=CHF&lc=EN&url=%2Fbook%2Fhotel%3Fcode%3DeXGkEkc2O2.xpBwLNU05piWyuc3AtCaFCQNXgtXYvS8.18445.2589314.MTczNTcwNzYwMDAwMF4xNzM2NDg1MjAwMDAwXjFeMl4%3D%26h%3D33a771566190%26sub%3D0%26_pt_%3D1&utid=YXF3ZGFhd2Rhd2RhYWRhYWF3ZGRhZHc%3D&cookieOverrides=e0r-vV17CTyHTY65FOuSfpGlZ8VuTtLg-vwvRhe5-avqm932KtEVJZiOo4bVrFuActUOcDgSrhkWgKBlk9DiUyyEqfs91OQwgBw-4svw-cD8_AUUTgde4st6JYeA6J64Coj0sGlwD5WqQy_UFPcgjCumX55wHwwOVU87k42BgPs"
+  BasicHotelResult:
+    type: object
+    properties:
+      id:
+        type: number
+        description: Unique identifier for the hotel
+      key:
+        type: EntityKey
+        description: Unique key for the hotel
+      name:
+        type: string
+        description: Name of the hotel
+      latitude:
+        type: number
+        format: double
+        description: Latitude of the hotel's location
+      longitude:
+        type: number
+        format: double
+        description: Longitude of the hotel's location
+      starRating:
+        type: number
+        description: Star rating of the hotel
+      isSelfRated:
+        type: boolean
+        description: Indicates whether the hotel is self-rated
+      lowestRate:
+        type: number | nil
+        description: Lowest rate available for the hotel
+      href:
+        type: string
+        description: Absolute URL to this hotel's search
+      guestRating:
+        type: number
+        description: Guest rating of the hotel
+      numberOfReviews:
+        type: number
+        description: Number of reviews for the hotel
+      highestRate:
+        type: number | nil
+        description: Highest rate available for the hotel
+      image:
+        type: object
+        properties:
+          large:
+            type: string
+            description: URL of the large image
+        description: Hotel image
+      licenseNumber?:
+        type: string
+        description: License number for the property
+    example:
+      id: 19097
+      key: khotel:19097
+      name: Hilton Boston Logan Airport
+      latitude: 42.366585
+      longitude: -71.022865
+      starRating: 4
+      isSelfRated: false
+      lowestRate: 1208.34
+      highestRate: null
+      href: "https://sandbox-en-us.kayakaffiliates.com/api/3.0/hotel?apiKey=key&checkin=2025-01-01&checkout=2025-01-10&rooms=2&userTrackId=123&hotel=khotel%3A19097"
+      guestRating: 7.8
+      numberOfReviews: 1638
+      image:
+        large: "https://sandbox-en-us.kayakaffiliates.com/himg/ea/0c/3a/ice-19097-99661196-299894.jpg"
+  SingleHotelSearchResponseOptions:
+    type: string
+    description: |
+      Comma-separated list of optional elements that should be included within the response object.
+      
+      Optional elements will only be returned if they have been requested via this parameter. 
+      Each optional element detailed below will list the `responseOptions` name required to return it as part of the response:
+      - `features` (includes `features` [`HotelFeatures`] field in response)
+      - `featureSummary` (includes `featureSummary` [`HotelFeatureSummary[]`] field in response)
+      - `featureTags` (includes `featureTags` [`HotelFeatureTag[]`] field in response)
+      - `description` (includes `description` [`string`] field in response)
+      - `images` (includes `images` [`HotelImage[]`] field in response)
+      - `place` (includes `place` [`HotelPlace`] field in response)
+      - `reviews` (includes `reviews` [`HotelReviews`] field in response)
+      - `hotelWellKnownPlace` (includes `wellKnownPlace` [`HotelWellKnownPlace`] field in response)
+    example: features,images,place,reviews
+  SingleHotelSearchResponse:
+    properties:
+      id:
+        type: number
+        description: Unique hotel identifier
+      key:
+        type: EntityKey
+        description: Hotel key
+      name:
+        type: string
+        description: Hotel name
+      translatedName?:
+        type: string
+        description: |
+          Translated hotel name.
+          
+          Included when the `languageCode` parameter is set to a language other than the default
+      address:
+        type: string
+        description: Hotel address
+      hotelCountryCode:
+        type: CountryCode
+        description: Country code for the hotel's country
+      latitude:
+        type: number
+        format: double
+        description: Latitude of the hotel's location
+      longitude:
+        type: number
+        format: double
+        description: Longitude of the hotel's location
+      starRating:
+        type: number
+        description: Hotel star rating
+      isSelfRated:
+        type: boolean
+        description: Indicates whether the hotel gave itself a star rating
+      lowestRate:
+        type: number | nil
+        description: |
+          Lowest rate of the cheapest provider. Can be null
+          
+          When searching without dates, this represents the lowest nightly rate recently observed for this hotel
+      isComplete:
+        type: boolean
+        description: |
+          Indicates whether the search is complete.
+          
+          If `false`, subsequent requests need to be made until completion.
+          
+          Refer to the `Query completion` section for more details
+      searchTime:
+        type: number
+        description: Time taken to complete the search in milliseconds
+      totalResults:
+        type: number
+        description: Total number of results
+      currencyCode:
+        type: CurrencyCode
+        description: Currency of the returned rates
+      languageCode:
+        type: LanguageCode
+        description: Language of the returned result
+      countryCode:
+        type: string
+        description: ISO country code derived from request data
+      policies:
+        type: HotelPolicy[]
+        description: Hotel policies
+      providers:
+        type: HotelProvider[]
+        description: |
+          List of providers offering rates for the hotel.
+      results?:
+        type: HotelRate[]
+        description: |
+          List of rates for the hotel.
+          Booking options are returned sorted based on our recommendations to provide the most relevant options first.
+          Not included for dataless searches.
+      licenseNumber?:
+        type: string
+        description: License number for the property
+      features?:
+        type: HotelFeatures
+        description: |
+          Hotel feature identifiers.
+          
+          Optionally included by passing `features` value to the `responseOptions` parameter
+      featureSummary?:
+        type: HotelFeatureSummary[]
+        description: |
+          Hotel features and their descriptions.
+          
+          Optionally included by passing `featureSummary` value to the `responseOptions` parameter
+      featureTags?:
+        type: HotelFeatureTag[]
+        description: |
+          Hotel feature tags.
+          
+          Optionally included by passing `featureTags` value to the `responseOptions` parameter
+      description?:
+        type: string
+        description: |
+          Hotel description.
+          
+          Optionally included by passing `description` value to the `responseOptions` parameter
+      images?:
+        type: HotelImage[]
+        description: |
+          Hotel images.
+          
+          Optionally included by passing `images` value to the `responseOptions` parameter
+      place?:
+        type: SearchableHotelPlace
+        description: |
+          Hotel place information.
+          
+          Optionally included by passing `place` value to the `responseOptions` parameter
+      reviews?:
+        type: HotelReviews
+        description: |
+          Hotel review information.
+          
+          Optionally included by passing `reviews` value to the `responseOptions` parameter
+      wellKnownPlace?:
+        type: HotelPlace
+        description: |
+          Well-known place that the hotel belongs to.
+          
+          Optionally included by passing `hotelWellKnownPlace` value to the `responseOptions` parameter
+    example:
+      id: 53213
+      key: khotel:53213
+      name: Novotel Paris les Halles
+      address: 8 Place Marguerite de Navarre
+      hotelCountryCode: FR
+      latitude: 48.86061
+      longitude: 2.346624
+      starRating: 4
+      isSelfRated: false
+      lowestRate: 123
+      isComplete: false
+      searchTime: 141
+      totalResults: 0
+      currencyCode: USD
+      languageCode: EN
+      countryCode: US
+      policies:
+        - code: checkin
+          name: Check-in
+          description: From 2:00 pm
+        - code: checkout
+          name: Check-out
+          description: Prior to 12:00 pm
+      providers:
+        - code: BOOKINGDOTCOMAFFILIATE
+          name: Booking.com
+          logo: "https://content.r9cdn.net/rimg/provider-logos/hotels/h/BOOKINGDOTCOM.png?crop=false&width=88&height=31&fallback=default2.png&_v=1233faf051a0a6b9d9807846b1316f74"
+          isDirect: false
+          isLanguageSupported: true
+      results:
+        - roomName: Superior Room, 1 Double Bed with Sofa bed
+          totalRate: 496.57
+          isCheapestRate: true
+          hasFreeCancellation: true
+          canPayLater: false
+          isBundledRate: false
+          inclusions: [ 0 ]
+          availableRooms: 5
+          providerIndex: 0
+          isDeprioritisedForExcludedCharges: false
+          bookUri: "https://sandbox-en-us.kayakaffiliates.com/in?cluster=5&a=test&p=&cc=us&mc=USD&lc=EN&url=%2Fbook%2Fhotel%3Fcode%3DePGkPeZiuU.WfxetRcZFwD1Q7IXP-_L1Py0tDCcY098_zlHXEqg5Jg.8011.34725.MTczNTAxNjQwMDAwMF4xNzM1MTg5MjAwMDAwXjFeMl4%3D%26h%3D15934f2d29fb%26sub%3D0%26_pt_%3D1&utid=Y2JlZWVkZTctOGQwMy00YjNmLTk0YjItNmEyOTgyNmIwZGFj&cookieOverrides=e0r-vV17CTyHTY65FOuSfpuiSi532wQJ5efdFnxzSuKhG6hIIkTjCcazxC1bHSnyNDLZSN6LSQ92RWM8UC2QrTiqSq74qWiWmqrB6bGpmBAMa6U3OZ4OyZLfeXwRDHnM1tHUoT5wROmaDjmSIwQkTfyq0BGn6FcFYK-0mxtf-FM"
+  MultipleHotelSearchResponseOptions:
+    type: string
+    description: |
+      Comma-separated list of optional elements that should be included within the response object.
+      
+      Optional elements will only be returned if they have been requested via this parameter. 
+      Each optional element detailed below will list the `responseOptions` name required to return it as part of the response:
+      - `filter` - includes the following filter buckets with total hotel counts in response for these buckets:
+        - `chains` [`HotelItemReference[]`]
+        - `hotelThemes` [`HotelItemReference[]`]
+        - `propertyTypes` [`HotelItemReference[]`]
+        - `facilities` [`HotelItemReference[]`]
+        - `deals` [`HotelItemReference[]`]
+        - `guestRatings` [`BasicHotelRating[]`]
+        - `starRatings` [`BasicHotelRating[]`]
+        - `hotelRatings` [`DetailedHotelRating[]`]
+        - `priceRanges` [`HotelPriceRange[]`]
+      - `destination` (includes `destination` [`HotelDestination`] field in response)
+      - `rateBreakdown` (includes `results.rates.rateBreakdown` [`HotelRateBreakdown`] field in response)
+      - `hotelWellKnownPlace` (includes `results.wellKnownPlace` [`HotelWellKnownPlace`] field in response)
+      - `images` (includes `results.images` [`HotelImage[]`] field in response)
+      - `hotelPlace` (includes `results.place` [`HotelPlace`] field in response)
+      - `reviews` (includes `results.reviewQuotes` [`string[]`] and `results.guestRatingSentiment` [`string`] fields in response)
+      - `topRates` (includes `providers` [`HotelProvider[]`] and `results.rates` [`HotelRate[]`] (limited to 4 top values) fields in response)
+      - `multipleHotelsAllRates` (includes `providers` [`HotelProvider[]`] and `results.rates` [`HotelRate[]`] fields in response)
+    example: filter,destination
+  MultipleHotelSearchResponse:
+    type: object
+    properties:
+      isComplete:
+        type: boolean
+        description: |
+          Indicates whether the search is complete.
+
+          If `false`, subsequent requests can be made until completion
+      searchTime:
+        type: number
+        description: Time taken to complete the search in milliseconds
+      totalResults:
+        type: number
+        description: Total number of results
+      totalAvailableResults:
+        type: number
+        description: Total number of available results
+      totalFilteredResults:
+        type: number
+        description: Total number of filtered results
+      currencyCode:
+        type: CurrencyCode
+        description: |
+          Currency of the returned rates.
+
+          Defaults to the currency based on user's location
+      languageCode:
+        type: LanguageCode
+        description: Language of the returned results
+      lowestTotalRate?:
+        type: number
+        format: double
+        description: Lowest rate of the cheapest hotel
+      highestTotalRate?:
+        type: number
+        format: double
+        description: Highest rate of the most expensive hotel
+      postFilterLowestTotalRate?:
+        type: number
+        format: double
+        description: Lowest rate of the cheapest hotel after filters are applied
+      postFilterHighestTotalRate?:
+        type: number
+        format: double
+        description: Highest rate of the most expensive hotel after filters are applied
+      results?:
+        type: HotelResult[]
+        description: |
+          List containing a single page of results.
+          
+          Hotels are returned sorted based on our recommendations to provide the most relevant results first.
+          
+          Not returned when the `summaryOnly` parameter is set to `true`
+      destination:
+        type: HotelDestination | nil
+        description: |
+          Details of the destination that was searched. Returns `null` if the destination was not found.
+          
+          Optionally included by passing `destination` value to the `responseOptions` parameter
+      chains?:
+        type: HotelItemReference[]
+        description: |
+          Chains of the found hotels and the number of hotels belonging to each chain after filters are applied
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      hotelThemes?:
+        type: HotelItemReference[]
+        description: |
+          Themes of the found hotels and the number of hotels belonging to each theme after filters are applied
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      propertyTypes?:
+        type: HotelItemReference[]
+        description: |
+          Property types of the found hotels and the number of hotels belonging to each property type after filters are applied
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      facilities?:
+        type: HotelItemReference[]
+        description: |
+          Facilities of the found hotels and the number of hotels belonging to each facility after filters are applied
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      deals?:
+        type: HotelItemReference[]
+        description: |
+          Deals of the found hotels and the number of hotels belonging to each deal after filters are applied
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      guestRatings?:
+        type: BasicHotelRating[]
+        description: |
+          Guest ratings of the found hotels and the number of hotels belonging to each guest rating after filters are applied
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      starRatings?:
+        type: BasicHotelRating[]
+        description:
+          Star ratings of the found hotels and the number of hotels belonging to each star rating after filters are applied
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      hotelRatings?:
+        type: DetailedHotelRating[]
+        description:
+          Detailed hotel ratings of the found hotels and the number of hotels belonging to each rating after filters are applied
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      priceRanges?:
+        type: HotelPriceRange[]
+        description: |
+          A series of price ranges and the number of hotels for which the lowest rate is within that range after filters are applied.
+          The keys represent the lower bound of the range in the same currency as the results; the upper bound of the range is represented
+          by the  key of the next item in the array. The number and size of the price ranges varies from time to time
+          
+          Optionally included by passing `filter` value to the `responseOptions` parameter
+      providers?:
+        type: HotelProvider[]
+        description: |
+          List of providers that offer rates for the hotels in the search results.
+          
+          Optionally included by passing `topRates` or `multipleHotelsAllRates` value to the `responseOptions` parameter
+    example:
+      isComplete: true
+      searchTime: 294
+      totalResults: 1
+      totalAvailableResults: 1
+      totalFilteredResults: 1
+      currencyCode: CHF
+      languageCode: EN
+      lowestTotalRate: 1213.11
+      highestTotalRate: 1213.11
+      postFilterLowestTotalRate: 1213.11
+      postFilterHighestTotalRate: 1213.11
+      destination:
+        id: 58075
+        key: kplace:58075
+        href: "https://sandbox-en-us.kayakaffiliates.com/api/3.0/hotels?apiKey=key&check"
+        type: 2
+        name: Boston
+        fullName: Boston, Massachusetts, United States
+        isSearchable: true
+        latitude: 42.360903491390246
+        longitude: -71.05889023544313
+        hasBoundary: true
+        radius: 0
+        maximumRadius: 0
+      providers:
+        - code: BOOKINGDOTCOMAFFILIATE
+          name: Booking.com
+          logo: "https://content.r9cdn.net/rimg/provider-logos/hotels/h/BOOKINGDOTCOM.png?crop=false&width=88&height=31&fallback=default2.png&_v=1233faf051a0a6b9d9807846b1316f74"
+          isDirect: false
+          isLanguageSupported: true
+      results:
+        - id: 2589314
+          key: khotel:2589314
+          name: citizenM Tower of London
+          address: 40 Trinity Square
+          hotelCountryCode: GB
+          latitude: 51.51018
+          longitude: -0.07687
+          starRating: 4
+          isSelfRated: false
+          images:
+            - large: "https://www.kayak.ch/h/run/api/image?url=/himg/c7/00/32/expedia_group-2589314-56e9e3-056459.jpg&maxheight=460"
+              small: "https://www.kayak.ch/h/run/api/image?url=/himg/c7/00/32/expedia_group-2589314-56e9e3-056459.jpg&maxheight=230"
+          lowestRate: 1213.11
+          href: "https://sandbox-en-us.kayakaffiliates.com/api/3.0/hotel?apiKey=key&checkin=2025-01-01&checkout=2025-01-10&rooms=2&pageSize=2&responseOptions=toprates%2Cimages&userTrackId=trackId&pageSize=1&hotel=khotel%3A2589314"
+          distance: 0
+          isWithinBoundary: false
+          isGreatValue: false
+          propertyType: 0
+          numberOfProviders: 4
+          numberOfRates: 7
+          guestRating: 8.6
+          numberOfReviews: 3118
+          highestRate: 1429.74
+          rates:
+            - roomName: King-Zimmer
+              totalRate: 1215.27
+              isCheapestRate: false
+              hasFreeCancellation: false
+              canPayLater: false
+              isBundledRate: false
+              inclusions: [ ]
+              availableRooms: 10
+              providerIndex: 1
+              isDeprioritisedForExcludedCharges: false
+              bookUri: "https://sandbox-en-us.kayakaffiliates.com/in?cluster=5&a=kan_316089_592117&p=&cc=ch&mc=CHF&lc=EN&url=%2Fbook%2Fhotel%3Fcode%3DeXGkEkc2O2.xpBwLNU05piWyuc3AtCaFCQNXgtXYvS8.18445.2589314.MTczNTcwNzYwMDAwMF4xNzM2NDg1MjAwMDAwXjFeMl4%3D%26h%3D33a771566190%26sub%3D0%26_pt_%3D1&utid=YXF3ZGFhd2Rhd2RhYWRhYWF3ZGRhZHc%3D&cookieOverrides=e0r-vV17CTyHTY65FOuSfpGlZ8VuTtLg-vwvRhe5-avqm932KtEVJZiOo4bVrFuActUOcDgSrhkWgKBlk9DiUyyEqfs91OQwgBw-4svw-cD8_AUUTgde4st6JYeA6J64Coj0sGlwD5WqQy_UFPcgjCumX55wHwwOVU87k42BgPs"
+  BasicMultipleHotelSearchResponse:
+    properties:
+      isComplete:
+        type: boolean
+        description: |
+          Indicates whether the search is complete.
+
+          If `false`, subsequent requests can be made until completion
+      searchTime:
+        type: number
+        description: Time taken to complete the search in milliseconds
+      totalResults:
+        type: number
+        description: Total number of results
+      totalAvailableResults:
+        type: number
+        description: Total number of available results
+      totalFilteredResults:
+        type: number
+        description: Total number of filtered results
+      currencyCode:
+        type: CurrencyCode
+        description: |
+          Currency of the returned rates.
+
+          Defaults to the currency based on user's location
+      languageCode:
+        type: LanguageCode
+        description: Language of the returned results
+      results?:
+        type: BasicHotelResult[]
+        description: List containing a single page of results
+    example:
+      isComplete: true
+      searchTime: 508
+      totalResults: 1
+      totalAvailableResults: 1
+      totalFilteredResults: 1
+      currencyCode: CHF
+      languageCode: EN
+      results:
+        - id: 2589314
+          key: khotel:2589314
+          name: citizenM Tower of London
+          latitude: 51.51018
+          longitude: -0.07687
+          starRating: 4
+          isSelfRated: false
+          lowestRate: 1213.11
+          highestRate: 4999.99
+          href: "https://sandbox-en-us.kayakaffiliates.com/api/3.0/hotel?apiKey=3C3AF44A-5951-4F5E-9896-94DE5550CC26&checkin=2025-01-01&checkout=2025-01-10&rooms=2&sessionID=123&hotel=khotel%3A2589314"
+          guestRating: 8.6
+          numberOfReviews: 3118
+          image:
+            large: "https://sandbox-en-us.kayakaffiliates.com/himg/c7/00/32/expedia_group-2589314-56e9e3-056459.jpg"
+
+traits:
+  hasStandardErrors:
+    responses:
+      400:
+        description: Validation error in request
+        body:
+          application/json:
+            type: string
+      401:
+        description: Missing or incorrect API key
+        body:
+          application/json:
+            type: string
+      403:
+        description: Request is not allowed
+        body:
+          application/json:
+            type: string
+      404:
+        description: Resource was not found
+        body:
+          application/json:
+            type: string

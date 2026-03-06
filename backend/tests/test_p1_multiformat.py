@@ -76,15 +76,16 @@ def _write_temp(content: str, suffix: str) -> str:
 
 
 class TestTransformationMultiFormat:
-    def test_raml_parsed_as_yaml(self):
-        """RAML is valid YAML — title key should be present in parsed spec."""
+    def test_raml_normalized_to_openapi(self):
+        """RAML is normalized into OpenAPI structure with info, paths, etc."""
         tmp = _write_temp(RAML_CONTENT, ".raml")
         try:
             converter = OpenAPIToMarkdown(tmp)
-            assert "title" in converter.spec
-            assert converter.spec["title"] == "Hello API"
+            assert converter.spec.get("info", {}).get("title") == "Hello API"
+            assert "/hello" in converter.spec.get("paths", {})
             md = converter.convert()
             assert isinstance(md, str) and len(md) > 0
+            assert "Hello API" in md
         finally:
             Path(tmp).unlink(missing_ok=True)
 
@@ -139,12 +140,13 @@ class TestTransformationMultiFormat:
 
 
 class TestLoadOpenAPISpec:
-    def test_raml_returns_yaml_dict(self):
+    def test_raml_returns_normalized_openapi(self):
         tmp = _write_temp(RAML_CONTENT, ".raml")
         try:
             result = load_openapi_spec(tmp, ".raml")
             assert isinstance(result, dict)
-            assert result["title"] == "Hello API"
+            assert result.get("info", {}).get("title") == "Hello API"
+            assert "/hello" in result.get("paths", {})
         finally:
             Path(tmp).unlink(missing_ok=True)
 
@@ -174,6 +176,30 @@ class TestLoadOpenAPISpec:
             assert "_raw_content" in result
         finally:
             Path(tmp).unlink(missing_ok=True)
+
+
+# ── Group 2b: Real RAML example file ─────────────────────────────────
+
+
+class TestRealRAML:
+    RAML_PATH = Path(__file__).resolve().parent.parent.parent / "examples" / "hapi_affiliate (1).raml"
+
+    @pytest.mark.skipif(
+        not (Path(__file__).resolve().parent.parent.parent / "examples" / "hapi_affiliate (1).raml").exists(),
+        reason="Example RAML file not present",
+    )
+    def test_real_raml_produces_endpoints(self):
+        """The real Hotels Search RAML file should produce paths, schemas, and substantial markdown."""
+        converter = OpenAPIToMarkdown(str(self.RAML_PATH))
+        assert converter.spec["info"]["title"] == "Hotels Search API"
+        assert converter.spec["info"]["version"] == "v3"
+        assert len(converter.spec.get("paths", {})) >= 3
+        assert len(converter.spec.get("components", {}).get("schemas", {})) > 10
+
+        md = converter.convert()
+        assert len(md) > 5000
+        assert "Hotels Search API" in md
+        assert "ENDPOINT:" in md
 
 
 # ── Group 3: Constants validation ────────────────────────────────────

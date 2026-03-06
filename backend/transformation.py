@@ -22,6 +22,166 @@ from collections import defaultdict
 from copy import deepcopy
 
 
+_RAML_TYPE_MAP = {
+    "string": "string", "number": "number", "integer": "integer",
+    "boolean": "boolean", "date-only": "string", "time-only": "string",
+    "datetime-only": "string", "datetime": "string", "file": "string",
+    "nil": "string", "any": "string", "object": "object", "array": "array",
+}
+
+
+def _raml_type_to_schema(raml_type: Any) -> Dict[str, Any]:
+    """Best-effort conversion of a RAML type definition to an OpenAPI schema."""
+    if isinstance(raml_type, str):
+        base = raml_type.rstrip("[]")
+        is_array = raml_type.endswith("[]")
+        mapped = _RAML_TYPE_MAP.get(base, "string")
+        if is_array:
+            return {"type": "array", "items": {"type": mapped}}
+        if base in _RAML_TYPE_MAP:
+            schema: Dict[str, Any] = {"type": mapped}
+            if base == "date-only":
+                schema["format"] = "date"
+            return schema
+        return {"type": "string", "description": f"(RAML type: {raml_type})"}
+
+    if isinstance(raml_type, dict):
+        schema = {}
+        t = raml_type.get("type", "object")
+        if isinstance(t, str) and t.endswith("[]"):
+            schema["type"] = "array"
+            schema["items"] = _raml_type_to_schema(t.rstrip("[]"))
+        else:
+            schema["type"] = _RAML_TYPE_MAP.get(t, "string") if isinstance(t, str) else "string"
+        if "description" in raml_type:
+            schema["description"] = raml_type["description"]
+        if "enum" in raml_type:
+            schema["enum"] = raml_type["enum"]
+        if "properties" in raml_type and isinstance(raml_type["properties"], dict):
+            schema["type"] = "object"
+            props = {}
+            for pname, pdef in raml_type["properties"].items():
+                clean = pname.rstrip("?")
+                props[clean] = _raml_type_to_schema(pdef) if isinstance(pdef, dict) else _raml_type_to_schema(pdef)
+            schema["properties"] = props
+        return schema
+
+    return {"type": "string"}
+
+
+def _raml_resource_to_paths(key: str, resource: dict, default_media: str) -> Dict[str, Dict]:
+    """Flatten a RAML resource (possibly with nested sub-resources) into OpenAPI paths."""
+    paths: Dict[str, Dict] = {}
+    methods = ("get", "post", "put", "patch", "delete", "head", "options")
+    path_item: Dict[str, Any] = {}
+
+    display_name = resource.get("displayName", "")
+    resource_desc = resource.get("description", "")
+
+    for method in methods:
+        if method not in resource:
+            continue
+        method_def = resource[method] if isinstance(resource[method], dict) else {}
+        operation: Dict[str, Any] = {}
+
+        if display_name:
+            operation["summary"] = display_name
+        if resource_desc:
+            operation["description"] = resource_desc
+        elif method_def.get("description"):
+            operation["description"] = method_def["description"]
+
+        operation["operationId"] = f"{method}_{key.replace('/', '_').strip('_')}"
+        operation["tags"] = [display_name] if display_name else ["Default"]
+
+        params = []
+        for pname, pdef in (method_def.get("queryParameters") or {}).items():
+            clean_name = pname.rstrip("?")
+            required = not pname.endswith("?")
+            param: Dict[str, Any] = {"name": clean_name, "in": "query", "required": required}
+            if isinstance(pdef, dict):
+                if "description" in pdef:
+                    param["description"] = str(pdef["description"]).strip()
+                param["schema"] = _raml_type_to_schema(pdef)
+            else:
+                param["schema"] = {"type": "string"}
+            params.append(param)
+        if params:
+            operation["parameters"] = params
+
+        raw_responses = method_def.get("responses", {})
+        if raw_responses and isinstance(raw_responses, dict):
+            oapi_responses: Dict[str, Any] = {}
+            for status, resp_def in raw_responses.items():
+                resp: Dict[str, Any] = {"description": ""}
+                if isinstance(resp_def, dict):
+                    body = resp_def.get("body", {})
+                    if body and isinstance(body, dict):
+                        content = {}
+                        for media, media_def in body.items():
+                            content[media] = {"schema": _raml_type_to_schema(media_def) if isinstance(media_def, dict) else {"type": "string"}}
+                        resp["content"] = content
+                oapi_responses[str(status)] = resp
+            operation["responses"] = oapi_responses
+        else:
+            operation["responses"] = {"200": {"description": "OK"}}
+
+        path_item[method] = operation
+
+    if path_item:
+        paths[key] = path_item
+
+    for sub_key, sub_val in resource.items():
+        if sub_key.startswith("/") and isinstance(sub_val, dict):
+            sub_paths = _raml_resource_to_paths(key + sub_key, sub_val, default_media)
+            paths.update(sub_paths)
+
+    return paths
+
+
+def normalize_raml(raml: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert a RAML-parsed dict into an OpenAPI-like structure."""
+    spec: Dict[str, Any] = {"openapi": "3.0.0"}
+
+    info: Dict[str, Any] = {
+        "title": raml.get("title", "API"),
+        "version": str(raml.get("version", "1.0.0")),
+    }
+    if "description" in raml:
+        info["description"] = raml["description"]
+
+    docs = raml.get("documentation")
+    if isinstance(docs, list):
+        parts = []
+        for doc in docs:
+            if isinstance(doc, dict):
+                parts.append(f"## {doc.get('title', '')}\n{doc.get('content', '')}")
+        if parts:
+            extra = "\n\n".join(parts)
+            info["description"] = f"{info.get('description', '')}\n\n{extra}".strip()
+
+    spec["info"] = info
+
+    if "baseUri" in raml:
+        spec["servers"] = [{"url": raml["baseUri"]}]
+
+    default_media = raml.get("mediaType", "application/json")
+    paths: Dict[str, Dict] = {}
+    for key, val in raml.items():
+        if key.startswith("/") and isinstance(val, dict):
+            paths.update(_raml_resource_to_paths(key, val, default_media))
+    spec["paths"] = paths
+
+    raml_types = raml.get("types", {})
+    if isinstance(raml_types, dict) and raml_types:
+        schemas = {}
+        for tname, tdef in raml_types.items():
+            schemas[tname] = _raml_type_to_schema(tdef)
+        spec["components"] = {"schemas": schemas}
+
+    return spec
+
+
 class OpenAPIToMarkdown:
     """Convert OpenAPI specification to LLM-ready markdown format."""
     
@@ -44,7 +204,11 @@ class OpenAPIToMarkdown:
 
         suffix = self.spec_path.suffix.lower()
 
-        if suffix in ('.yaml', '.yml', '.raml'):
+        if suffix == '.raml':
+            raw = yaml.safe_load(content) or {}
+            return normalize_raml(raw)
+
+        if suffix in ('.yaml', '.yml'):
             return yaml.safe_load(content) or {}
 
         if suffix == '.json':
