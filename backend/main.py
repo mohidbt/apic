@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from contextlib import asynccontextmanager
 import io
 import os
+import re
 import tempfile
 import time
 import json
@@ -183,6 +184,7 @@ def _job_snapshot(job: Dict[str, Any]) -> Dict[str, Any]:
         "token_count": job.get("token_count"),
         "marketplace_save_status": job.get("marketplace_save_status"),
         "marketplace_spec_id": job.get("marketplace_spec_id"),
+        "provider": job.get("provider"),
         "error": job.get("error"),
     }
 
@@ -329,7 +331,17 @@ async def process_conversion_job(
                     db_ms = int((time.perf_counter() - db_started) * 1000)
 
             total_ms = int((time.perf_counter() - started_at) * 1000)
-            output_filename = Path(safe_filename).stem + ".md"
+
+            spec_info = converter.spec.get("info", {})
+            provider = spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name")
+
+            api_name = spec_info.get("title", "api")
+            api_version = spec_info.get("version", "1.0.0")
+            sanitized_name = re.sub(r'[^\w\s-]', '', api_name.lower())
+            sanitized_name = re.sub(r'[-\s]+', '-', sanitized_name).strip('-')
+            sanitized_version = re.sub(r'[^\w.-]', '', api_version)
+            output_filename = f"{sanitized_name}-v{sanitized_version}.md"
+
         async with job_lock:
             job = conversion_jobs.get(job_id)
             if not job:
@@ -337,6 +349,7 @@ async def process_conversion_job(
             job["status"] = "completed"
             job["stage"] = "completed"
             job["output_filename"] = output_filename
+            job["provider"] = provider
             job["markdown_content"] = markdown_content
             job["token_count"] = token_count
             job["marketplace_save_status"] = marketplace_save_status
@@ -595,7 +608,8 @@ async def convert_openapi(
                 "marketplace_spec_id": "",
                 "error": None,
                 "markdown_content": None,
-                "output_filename": Path(safe_filename).stem + ".md",
+                "provider": None,
+                "output_filename": "converted.md",
                 "created_at": now_iso(),
                 "created_at_ts": now_ts(),
                 "updated_at": now_iso(),
@@ -696,6 +710,7 @@ async def share_converted_spec(
     file: UploadFile = File(...),
     markdown_content: str = Form(...),
     token_count: Optional[int] = Form(None),
+    provider_name: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -736,10 +751,14 @@ async def share_converted_spec(
             resolved_token_count = await run_in_threadpool(estimate_token_count, markdown_content)
 
         original_content = Path(temp_input_path).read_text(encoding="utf-8")
+        resolved_provider = (
+            provider_name.strip() if provider_name and provider_name.strip()
+            else spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name")
+        )
         spec_data = SpecCreate(
             name=spec_info.get("title", "Untitled API"),
             version=spec_info.get("version", "1.0.0"),
-            provider=spec_info.get("x-providerName") or spec_info.get("contact", {}).get("name"),
+            provider=resolved_provider,
             original_filename=safe_filename,
             original_format=FORMAT_MAP.get(file_extension, "yaml"),
             original_content=original_content,

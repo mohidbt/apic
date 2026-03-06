@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { CheckCircle2, Download, Share2, Sparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -17,8 +19,9 @@ interface ContributeDialogProps {
   onOpenChange: (open: boolean) => void
   filename: string
   tokenCount: number | null
+  provider: string | null
   onDownloadOnly: () => void
-  onDownloadAndShare: () => Promise<void>
+  onDownloadAndShare: (providerName?: string) => Promise<void>
   isSharing: boolean
 }
 
@@ -34,10 +37,15 @@ export function ContributeDialog({
   onOpenChange,
   filename,
   tokenCount,
+  provider,
   onDownloadOnly,
   onDownloadAndShare,
   isSharing,
 }: ContributeDialogProps) {
+  const [manualProvider, setManualProvider] = useState('')
+  const needsProvider = !provider
+  const resolvedProvider = provider || manualProvider.trim()
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto sm:max-w-xl">
@@ -61,6 +69,23 @@ export function ContributeDialog({
             </p>
           </div>
 
+          {needsProvider && (
+            <div className="rounded-lg border border-orange-500/40 bg-orange-50/50 p-4 dark:bg-orange-950/20">
+              <label htmlFor="provider-name" className="mb-2 block text-sm font-medium text-foreground">
+                Provider Name <span className="text-destructive">*</span>
+              </label>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Could not detect a provider from the spec. Please enter the API provider name (e.g. &quot;Stripe&quot;, &quot;Twilio&quot;).
+              </p>
+              <Input
+                id="provider-name"
+                placeholder="e.g. Stripe"
+                value={manualProvider}
+                onChange={(e) => setManualProvider(e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="rounded-lg border bg-background p-4">
             <p className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
               <Sparkles className="h-4 w-4" />
@@ -78,8 +103,8 @@ export function ContributeDialog({
             Just Download
           </Button>
           <Button
-            onClick={onDownloadAndShare}
-            disabled={isSharing}
+            onClick={() => onDownloadAndShare(needsProvider ? resolvedProvider : undefined)}
+            disabled={isSharing || (needsProvider && !resolvedProvider)}
             className="h-auto min-w-0 w-full whitespace-normal break-words py-2 text-left sm:basis-full sm:py-2 sm:text-left md:basis-auto md:w-auto md:text-center"
           >
             <Share2 className="mr-2 h-4 w-4" />

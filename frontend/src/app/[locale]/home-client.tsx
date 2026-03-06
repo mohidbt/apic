@@ -20,6 +20,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
   const [convertedBlob, setConvertedBlob] = useState<Blob | null>(null)
   const [convertedFilename, setConvertedFilename] = useState('converted.md')
   const [convertedTokenCount, setConvertedTokenCount] = useState<number | null>(null)
+  const [convertedProvider, setConvertedProvider] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const REQUEST_TIMEOUT_MS = 120000
 
@@ -102,6 +103,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
     setConvertedBlob(null)
     setConvertedFilename('converted.md')
     setConvertedTokenCount(null)
+    setConvertedProvider(null)
     setShowContributeDialog(false)
 
     if (fileInputRef.current) {
@@ -197,7 +199,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       }
       toast.info('Conversion queued. Processing in background...')
 
-      await pollConversionJob(apiUrl, jobId, requestId)
+      const completedJob = await pollConversionJob(apiUrl, jobId, requestId)
 
       const downloadResponse = await fetchWithTimeout(`${apiUrl}/api/convert/${jobId}/download`, {
         method: 'GET',
@@ -237,6 +239,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       setConvertedBlob(blob)
       setConvertedFilename(filename)
       setConvertedTokenCount(Number.isFinite(tokenCount) ? tokenCount : null)
+      setConvertedProvider(completedJob?.provider ?? null)
       setShowContributeDialog(true)
       toast.success('Conversion successful. Choose how to continue.')
     } catch (error) {
@@ -260,7 +263,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
     resetUploadState()
   }
 
-  const handleDownloadAndShare = async () => {
+  const handleDownloadAndShare = async (providerName?: string) => {
     if (!selectedFile || !convertedBlob) {
       toast.error('Missing file data. Please convert again.')
       return
@@ -278,6 +281,9 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       formData.append('markdown_content', markdownContent)
       if (convertedTokenCount !== null) {
         formData.append('token_count', String(convertedTokenCount))
+      }
+      if (providerName) {
+        formData.append('provider_name', providerName)
       }
 
       const response = await fetchWithTimeout(`${apiUrl}/api/specs/share`, {
@@ -479,6 +485,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
         onOpenChange={setShowContributeDialog}
         filename={convertedFilename}
         tokenCount={convertedTokenCount}
+        provider={convertedProvider}
         onDownloadOnly={handleDownloadOnly}
         onDownloadAndShare={handleDownloadAndShare}
         isSharing={isSharing}
