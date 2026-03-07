@@ -385,7 +385,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
             Let LLMs finally understand API Docs.
             </p>
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-              Just insert your API specs (YAML, JSON, RAML, WSDL, GraphQL, or API Blueprint) and get LLM-Ready Markdown back.
+              Just insert your API specs (OpenAPI, WSDL, GraphQL, or API Blueprint) and get LLM-Ready Markdown back.
               Or use the marketplace download ready-made API-Skills.
             </p>
           </div>
