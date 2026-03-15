@@ -88,6 +88,7 @@ def init_db():
     """
     # Import models to ensure they're registered
     from .api_spec import ApiSpec, Tag, spec_tags
+    from .user import User, ApiToken
     
     # Create all tables
     Base.metadata.create_all(bind=engine)

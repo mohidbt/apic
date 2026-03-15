@@ -213,9 +213,48 @@ The MCP server (`backend/mcp_server.py`) exposes stored API specs as discoverabl
 
 ### Running the MCP server
 
+The MCP server runs as a remote HTTP service with bearer-token authentication.
+
 ```bash
 cd backend
-python mcp_server.py
+
+# HTTP transport (production / remote clients)
+MCP_API_TOKEN=your-secret-token python mcp_server.py
+# Listens on 0.0.0.0:8080 by default — configurable via MCP_HOST / MCP_PORT
+
+# stdio transport (local development / debugging)
+MCP_TRANSPORT=stdio python mcp_server.py
+```
+
+| Env Var | Default | Description |
+|---------|---------|-------------|
+| `MCP_TRANSPORT` | `streamable-http` | `streamable-http` or `stdio` |
+| `MCP_HOST` | `0.0.0.0` | Bind address for HTTP transport |
+| `MCP_PORT` | `8080` | Listen port for HTTP transport |
+| `MCP_API_TOKEN` | *(required for HTTP)* | Bearer token clients must send |
+
+### Connecting clients
+
+**Cursor** — add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "APIIngest": {
+      "url": "https://your-deployed-host:8080/",
+      "headers": {
+        "Authorization": "Bearer your-secret-token"
+      }
+    }
+  }
+}
+```
+
+**Claude Code** — run:
+
+```bash
+claude mcp add --transport http APIIngest https://your-deployed-host:8080/ \
+  --header "Authorization: Bearer your-secret-token"
 ```
 
 An agent workflow typically looks like: fetch manifest (small) -> pick relevant endpoint by operationId -> fetch only that endpoint block. This avoids dumping the entire spec into context.

@@ -5,6 +5,7 @@
 import { NextIntlClientProvider } from 'next-intl'
 import React from 'react'
 import { ThemeProvider } from '../../components/theme-provider'
+import { AuthProvider } from '@/lib/auth-context'
 
 export const RootWrapper = ({
   children,
@@ -18,7 +19,9 @@ export const RootWrapper = ({
   return (
     <>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <NextIntlClientProvider locale={locale}>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider locale={locale}>
+          <AuthProvider>{children}</AuthProvider>
+        </NextIntlClientProvider>
       </ThemeProvider>
     </>
   )

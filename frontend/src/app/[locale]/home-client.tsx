@@ -1,11 +1,10 @@
 'use client'
 
+import { AppHeader } from '@/components/app-header'
 import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { Github, Star, Upload, FileText, Loader2, Package } from 'lucide-react'
+import { Upload, FileText, Loader2 } from 'lucide-react'
 import { useState, useRef } from 'react'
 import { toast } from 'sonner'
-import { Link } from '@/i18n/navigation'
 import { ContributeDialog } from '@/components/contribute-dialog'
 
 interface HomeClientProps {
@@ -335,41 +334,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold">
-              <span className="text-foreground">API Ingest</span>
-            </span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Link 
-              href="/marketplace"
-              className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
-            >
-              <Package className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Specs Marketplace</span>
-            </Link>
-            <a 
-              href="https://github.com/mohidbt/apic" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
-            >
-              <Github className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">GitHub</span>
-              {starCount > 0 && (
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 fill-primary text-primary" />
-                  <span className="ml-1 text-sm text-muted-foreground">{starCount}</span>
-                </div>
-              )}
-            </a>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <AppHeader starCount={starCount} />
 
       {/* Main Content */}
       <main className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-16">

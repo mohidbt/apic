@@ -13,17 +13,26 @@ implementing the progressive-disclosure pattern:
 
 Tools:
   convert_spec — convert raw OpenAPI YAML/JSON to chunked markdown on the fly
+
+Env vars (HTTP transport):
+  MCP_TRANSPORT   — "streamable-http" (default) or "stdio"
+  MCP_HOST        — bind address (default "0.0.0.0")
+  MCP_PORT        — listen port  (default 8080)
+  MCP_API_TOKEN   — optional admin fallback token (user tokens validated via DB)
 """
 
 import hashlib
 import json
+import os
 import tempfile
+import time
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
 from models.database import SessionLocal
 from models.api_spec import ApiSpec
+from models.user import ApiToken
 from transformation import OpenAPIToMarkdown
 
 _CONVERSION_CACHE: dict[tuple[int, str], tuple[dict, OpenAPIToMarkdown]] = {}
@@ -31,6 +40,9 @@ _MAX_CACHE_SIZE = 32
 
 mcp = FastMCP(
     "APIIngest",
+    stateless_http=True,
+    json_response=True,
+    streamable_http_path="/",
     instructions=(
         "This server exposes LLM-ready API documentation. "
         "Start with docs://specs to list available APIs, then drill into "
@@ -150,8 +162,7 @@ def get_endpoint(spec_id: int, operation_id: str) -> str:
 @mcp.resource("docs://specs/{spec_id}/schemas/{schema_name}")
 def get_schema(spec_id: int, schema_name: str) -> str:
     """Single component schema definition."""
-    spec = _get_spec_row(spec_id)
-    chunked, _ = _chunked_from_spec(spec)
+    chunked, _ = _get_chunked_and_converter(spec_id)
     schema = chunked["schemas"].get(schema_name)
     if schema is None:
         available = ", ".join(sorted(chunked["schemas"].keys())[:20])
@@ -165,8 +176,7 @@ def get_schema(spec_id: int, schema_name: str) -> str:
 @mcp.resource("docs://specs/{spec_id}/tools")
 def get_tool_schemas(spec_id: int) -> str:
     """JSON tool definitions for all endpoints — ready for function-calling."""
-    spec = _get_spec_row(spec_id)
-    _, converter = _chunked_from_spec(spec)
+    _, converter = _get_chunked_and_converter(spec_id)
     tools = converter.generate_tool_schemas()
     return json.dumps(tools, indent=2)
 
@@ -229,5 +239,81 @@ def convert_spec_to_tools(content: str, format: str = "yaml") -> str:
         Path(tmp).unlink(missing_ok=True)
 
 
+def _validate_bearer_token(raw_token: str, admin_token: str | None) -> bool:
+    """Check bearer token against the admin fallback and the api_tokens table."""
+    if admin_token and raw_token == admin_token:
+        return True
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    db = SessionLocal()
+    try:
+        row = (
+            db.query(ApiToken)
+            .filter(ApiToken.token_hash == token_hash, ApiToken.revoked_at.is_(None))
+            .first()
+        )
+        if not row:
+            return False
+        # Debounced last_used_at update (skip if < 60s ago)
+        now_ts = time.time()
+        if row.last_used_at is None or (now_ts - row.last_used_at.timestamp()) > 60:
+            from datetime import datetime, timezone
+
+            row.last_used_at = datetime.now(timezone.utc)
+            db.commit()
+        return True
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
-    mcp.run()
+    transport = os.getenv("MCP_TRANSPORT", "streamable-http")
+
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+    else:
+        import contextlib
+
+        import uvicorn
+        from starlette.applications import Starlette
+        from starlette.responses import JSONResponse
+        from starlette.routing import Mount
+        from starlette.types import ASGIApp, Receive, Scope, Send
+
+        host = os.getenv("MCP_HOST", "0.0.0.0")
+        port = int(os.getenv("MCP_PORT", "8080"))
+        admin_token = os.getenv("MCP_API_TOKEN") or None
+
+        class _BearerTokenMiddleware:
+            """Validate bearer tokens against the DB (and optional admin fallback)."""
+
+            def __init__(self, app: ASGIApp, admin_token: str | None):
+                self.app = app
+                self.admin_token = admin_token
+
+            async def __call__(self, scope: Scope, receive: Receive, send: Send):
+                if scope["type"] == "http":
+                    headers = dict(scope.get("headers", []))
+                    auth_value = headers.get(b"authorization", b"").decode()
+                    if not auth_value.startswith("Bearer "):
+                        resp = JSONResponse({"error": "unauthorized"}, status_code=401)
+                        await resp(scope, receive, send)
+                        return
+                    raw = auth_value[7:]
+                    if not _validate_bearer_token(raw, self.admin_token):
+                        resp = JSONResponse({"error": "unauthorized"}, status_code=401)
+                        await resp(scope, receive, send)
+                        return
+                await self.app(scope, receive, send)
+
+        @contextlib.asynccontextmanager
+        async def lifespan(app):
+            async with mcp.session_manager.run():
+                yield
+
+        starlette_app = Starlette(
+            routes=[Mount("/", app=mcp.streamable_http_app())],
+            lifespan=lifespan,
+        )
+        authed_app = _BearerTokenMiddleware(starlette_app, admin_token)
+
+        uvicorn.run(authed_app, host=host, port=port)

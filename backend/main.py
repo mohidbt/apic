@@ -12,25 +12,30 @@ from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from contextlib import asynccontextmanager
+import hashlib
 import io
 import os
 import re
+import secrets
 import tempfile
 import time
 import json
 import yaml
 import asyncio
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from uuid import uuid4
 from transformation import OpenAPIToMarkdown, normalize_raml, normalize_apib, normalize_wsdl, normalize_graphql, _safe_load_raml
 import httpx
+import jwt
 import logging
 import tiktoken
 
 # Import database models and CRUD operations
 from models.database import get_db, init_db, SessionLocal
 from models.api_spec import ApiSpec, Tag
+from models.user import User, ApiToken
 import crud.specs as crud
 from schemas.api_spec import (
     SpecCreate,
@@ -50,6 +55,11 @@ JOB_TTL_SECONDS = int(os.getenv("CONVERSION_JOB_TTL_SECONDS", "3600"))
 JOB_MAX_ITEMS = int(os.getenv("CONVERSION_JOB_MAX_ITEMS", "200"))
 CONVERSION_MAX_CONCURRENT = int(os.getenv("CONVERSION_MAX_CONCURRENT", "1"))
 CONVERSION_MAX_QUEUE = int(os.getenv("CONVERSION_MAX_QUEUE", "20"))
+
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
+SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me-in-production")
+SESSION_MAX_AGE = int(os.getenv("SESSION_MAX_AGE", "86400"))  # 24h
 
 ALLOWED_EXTENSIONS = [".yaml", ".yml", ".json", ".raml", ".apib", ".wsdl", ".graphql", ".gql"]
 FORMAT_MAP = {
@@ -807,6 +817,172 @@ async def share_converted_spec(
 async def health_check():
     """Health check endpoint for monitoring"""
     return {"status": "healthy"}
+
+
+# ============================================================================
+# Auth + Token Endpoints
+# ============================================================================
+
+
+def _get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    """Extract current user from session JWT cookie. Raises 401 if invalid."""
+    token = request.cookies.get("session")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, SESSION_SECRET, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    try:
+        user_id = int(payload.get("sub", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid session")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
+@app.post("/api/auth/github")
+async def auth_github(request: Request, db: Session = Depends(get_db)):
+    """Exchange a GitHub OAuth code for a session."""
+    body = await request.json()
+    code = body.get("code")
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing code")
+    if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
+
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            "https://github.com/login/oauth/access_token",
+            json={
+                "client_id": GITHUB_CLIENT_ID,
+                "client_secret": GITHUB_CLIENT_SECRET,
+                "code": code,
+            },
+            headers={"Accept": "application/json"},
+            timeout=10.0,
+        )
+        token_data = token_resp.json()
+        access_token = token_data.get("access_token")
+        if not access_token:
+            raise HTTPException(status_code=400, detail=token_data.get("error_description", "OAuth failed"))
+
+        user_resp = await client.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+            timeout=10.0,
+        )
+        if user_resp.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to fetch GitHub profile")
+        gh = user_resp.json()
+
+    github_id = gh["id"]
+    user = db.query(User).filter(User.github_id == github_id).first()
+    if user:
+        user.github_login = gh.get("login", user.github_login)
+        user.name = gh.get("name") or user.name
+        user.avatar_url = gh.get("avatar_url") or user.avatar_url
+    else:
+        user = User(
+            github_id=github_id,
+            github_login=gh.get("login", ""),
+            name=gh.get("name"),
+            avatar_url=gh.get("avatar_url"),
+        )
+        db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    session_token = jwt.encode(
+        {"sub": str(user.id), "exp": datetime.now(timezone.utc) + timedelta(seconds=SESSION_MAX_AGE)},
+        SESSION_SECRET,
+        algorithm="HS256",
+    )
+
+    response = JSONResponse(content={"user": user.to_dict()})
+    response.set_cookie(
+        key="session",
+        value=session_token,
+        httponly=True,
+        secure=request.url.scheme == "https",
+        samesite="lax",
+        max_age=SESSION_MAX_AGE,
+        path="/",
+    )
+    return response
+
+
+@app.get("/api/auth/me")
+async def auth_me(user: User = Depends(_get_current_user)):
+    """Return the currently logged-in user."""
+    return {"user": user.to_dict()}
+
+
+@app.post("/api/auth/logout")
+async def auth_logout():
+    """Clear the session cookie."""
+    response = JSONResponse(content={"ok": True})
+    response.delete_cookie(key="session", path="/")
+    return response
+
+
+@app.get("/api/tokens")
+async def list_tokens(
+    user: User = Depends(_get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List the current user's API tokens."""
+    tokens = (
+        db.query(ApiToken)
+        .filter(ApiToken.user_id == user.id, ApiToken.revoked_at.is_(None))
+        .order_by(ApiToken.created_at.desc())
+        .all()
+    )
+    return {"tokens": [t.to_dict() for t in tokens]}
+
+
+@app.post("/api/tokens")
+async def create_token(
+    request: Request,
+    user: User = Depends(_get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a new API token. The raw token is returned only once."""
+    body = await request.json()
+    label = (body.get("label") or "").strip()
+    if not label:
+        raise HTTPException(status_code=400, detail="Label is required")
+
+    raw_token = f"apii_{secrets.token_urlsafe(32)}"
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+    db_token = ApiToken(user_id=user.id, token_hash=token_hash, label=label)
+    db.add(db_token)
+    db.commit()
+    db.refresh(db_token)
+
+    return {"token": raw_token, "details": db_token.to_dict()}
+
+
+@app.delete("/api/tokens/{token_id}")
+async def revoke_token(
+    token_id: int,
+    user: User = Depends(_get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Revoke (soft-delete) an API token."""
+    db_token = (
+        db.query(ApiToken)
+        .filter(ApiToken.id == token_id, ApiToken.user_id == user.id, ApiToken.revoked_at.is_(None))
+        .first()
+    )
+    if not db_token:
+        raise HTTPException(status_code=404, detail="Token not found")
+    db_token.revoked_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"ok": True}
 
 
 # ============================================================================

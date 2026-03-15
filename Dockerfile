@@ -52,8 +52,8 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# Expose ports (Koyeb will use PORT env var, defaulting to 8000)
-EXPOSE 8000 3000
+# Expose ports: backend (8000), frontend (3000), MCP server (8080)
+EXPOSE 8000 3000 8080
 
 # Health check on backend
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

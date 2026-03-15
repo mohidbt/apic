@@ -14,7 +14,10 @@ sqlalchemy>=2.0.0
 psycopg[binary]>=3.1.0  # PostgreSQL driver for production
 tiktoken>=0.7.0
 
+# Auth
+PyJWT>=2.8.0
+
 # MCP server
-mcp[cli]>=1.0.0
+mcp[cli]>=1.6.0
 
 

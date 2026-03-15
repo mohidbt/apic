@@ -21,9 +21,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { AppHeader } from '@/components/app-header'
 import { SpecDetailModal } from '@/components/spec-detail-modal'
-import { Search, ChevronLeft, ChevronRight, Github, Star, Package } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { ApiSpec, SpecDetail, Tag } from '@/types/api-spec'
 import { fetchSpecs, fetchSpecDetail, formatFileSize, formatDate, formatTokenCount } from '@/lib/api'
 import { toast } from 'sonner'
@@ -120,41 +120,7 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center space-x-2">
-            <Link href="/" className="text-2xl font-bold">
-              <span className="text-foreground">API Ingest</span>
-            </Link>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Link 
-              href="/marketplace"
-              className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
-            >
-              <Package className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Specs Marketplace</span>
-            </Link>
-            <a 
-              href="https://github.com/mohidbt/apic" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
-            >
-              <Github className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">GitHub</span>
-              {starCount > 0 && (
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 fill-primary text-primary" />
-                  <span className="ml-1 text-sm text-muted-foreground">{starCount}</span>
-                </div>
-              )}
-            </a>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <AppHeader starCount={starCount} />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

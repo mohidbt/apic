@@ -66,6 +66,10 @@ NEXT_PUBLIC_API_URL=https://{{ KOYEB_PUBLIC_DOMAIN }}
 NODE_ENV=production
 PORT=8000
 
+# MCP Server (required for remote MCP clients)
+MCP_API_TOKEN=your-secret-token  # bearer token for MCP endpoint auth
+MCP_PORT=8080                     # MCP server listen port (default 8080)
+
 # Optional (defaults provided)
 DATABASE_PATH=/app/backend/data/apiingest.db  # SQLite fallback if DATABASE_URL not set
 LOG_LEVEL=INFO
@@ -187,6 +191,10 @@ NEXT_PUBLIC_API_URL=https://{{ KOYEB_PUBLIC_DOMAIN }}
 NODE_ENV=production
 PORT=8000
 
+# MCP Server
+MCP_API_TOKEN=your-secret-token
+MCP_PORT=8080
+
 # Optional (with defaults)
 DATABASE_PATH=/app/backend/data/apiingest.db
 LOG_LEVEL=INFO
@@ -206,6 +214,9 @@ CONVERSION_MAX_QUEUE=20
 | `NEXT_PUBLIC_API_URL` | Frontend (client) | Public API URL for browser requests |
 | `NODE_ENV` | Both | Set to `production` for optimizations |
 | `PORT` | Backend | Backend server port (must be 8000) |
+| `MCP_API_TOKEN` | MCP Server | Bearer token for MCP endpoint authentication (required) |
+| `MCP_PORT` | MCP Server | MCP server listen port (default 8080) |
+| `MCP_TRANSPORT` | MCP Server | Transport mode: `streamable-http` (default) or `stdio` |
 | `DATABASE_PATH` | Backend | SQLite fallback path (dev only) |
 | `LOG_LEVEL` | Backend | Logging verbosity (INFO/DEBUG/WARNING) |
 
@@ -310,6 +321,51 @@ Monitor in Koyeb dashboard:
 - PostgreSQL connection pooling is handled automatically
 - Database schema is created automatically on first run
 - See `KOYEB_PERSISTENT_DB.md` for detailed database setup
+
+## MCP Server
+
+The MCP server runs as a third process inside the container (managed by supervisord) on port 8080. It shares the same database as the backend and exposes stored API specs as MCP resources and tools.
+
+### Verifying MCP is running
+
+```bash
+# Quick health check (should return 401 without token)
+curl -s -o /dev/null -w "%{http_code}" https://your-app.koyeb.app:8080/
+# Expected: 401
+
+# With valid token (should return 200 or a protocol response)
+curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer your-secret-token" \
+  https://your-app.koyeb.app:8080/
+```
+
+### Connecting Cursor
+
+Add to your project or global `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "APIIngest": {
+      "url": "https://your-app.koyeb.app:8080/",
+      "headers": {
+        "Authorization": "Bearer your-secret-token"
+      }
+    }
+  }
+}
+```
+
+### Connecting Claude Code
+
+```bash
+claude mcp add --transport http APIIngest https://your-app.koyeb.app:8080/ \
+  --header "Authorization: Bearer your-secret-token"
+```
+
+### Port Exposure
+
+If deploying on Koyeb with a single container, you need to expose port 8080 in addition to 8000. Alternatively, you can use a reverse proxy rule to route `/mcp` traffic to the MCP process.
 
 ## Troubleshooting
 
@@ -599,35 +655,37 @@ After deploying, verify:
 ## Deployment Architecture Summary
 
 ```
-User Request
-    ↓
-Koyeb Load Balancer (HTTPS)
-    ↓
-Container (Port 8000)
-    ↓
-┌─────────────────────────────┐
-│      Supervisord           │
-│  ┌──────────┐  ┌──────────┐│
-│  │ FastAPI  │←─┤ Next.js  ││
-│  │ :8000    │  │ :3000    ││
-│  │ (public) │  │(internal)││
-│  └────┬─────┘  └──────────┘│
-└───────┼────────────────────┘
-        ↓
-    Supabase PostgreSQL
+User Request                        MCP Client (Cursor / Claude Code)
+    ↓                                       ↓
+Koyeb Load Balancer (HTTPS)         Bearer Token Auth
+    ↓                                       ↓
+Container (Port 8000)               Container (Port 8080)
+    ↓                                       ↓
+┌──────────────────────────────────────────────┐
+│              Supervisord                     │
+│  ┌──────────┐  ┌──────────┐  ┌────────────┐ │
+│  │ FastAPI  │←─┤ Next.js  │  │ MCP Server │ │
+│  │ :8000    │  │ :3000    │  │ :8080      │ │
+│  │ (public) │  │(internal)│  │ (public)   │ │
+│  └────┬─────┘  └──────────┘  └─────┬──────┘ │
+└───────┼─────────────────────────────┼────────┘
+        └──────────────┬──────────────┘
+                       ↓
+               Supabase PostgreSQL
 ```
 
 **Key Points**:
-- Single container, dual process
-- Only port 8000 exposed publicly
+- Single container, three processes (backend, frontend, MCP server)
+- Port 8000 (backend) and port 8080 (MCP) exposed publicly
 - SSR uses localhost for fast internal API calls
 - Client uses public domain for API calls
+- MCP clients connect to port 8080 with bearer token auth
 - PostgreSQL for persistent storage
 
 ---
 
-**Last Updated**: February 2026  
-**Deployment Type**: Single Container (Backend + Frontend)  
+**Last Updated**: March 2026  
+**Deployment Type**: Single Container (Backend + Frontend + MCP)  
 **Platform**: Koyeb  
 **Database**: Supabase PostgreSQL
 
