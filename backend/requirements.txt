@@ -20,4 +20,5 @@ PyJWT>=2.8.0
 # MCP server
 mcp[cli]>=1.6.0
 
-
+# Testing
+pytest>=8.0.0

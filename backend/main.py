@@ -1281,27 +1281,31 @@ async def frontend_root():
         )
 
 
+_FRONTEND_API_PREFIXES = ("api/auth/github",)
+
+
 @app.get("/{path:path}")
 async def catch_all(path: str):
     """Proxy non-API requests to frontend (production deployment)"""
-    # Never proxy /api routes - they should be handled by FastAPI endpoints above
-    if path.startswith("api"):
+    # /api routes belong to FastAPI, except Next.js auth routes which must
+    # be forwarded to the frontend so the OAuth redirect/callback works.
+    if path.startswith("api") and not any(path.startswith(p) for p in _FRONTEND_API_PREFIXES):
         raise HTTPException(status_code=404, detail="API endpoint not found")
-    
-    # Try to proxy to frontend (production)
+
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=5.0) as client:
+        async with httpx.AsyncClient(follow_redirects=False, timeout=5.0) as client:
             response = await client.get(f"http://localhost:3000/{path}", timeout=5.0)
-            # Handle redirects
-            if response.status_code in [301, 302, 303, 307, 308]:
-                return RedirectResponse(url=response.headers.get("location", f"/{path}"))
+            if response.status_code in (301, 302, 303, 307, 308):
+                return RedirectResponse(
+                    url=response.headers.get("location", f"/{path}"),
+                    status_code=response.status_code,
+                )
             return Response(
-                content=response.content, 
+                content=response.content,
                 media_type=response.headers.get("content-type", "text/html"),
-                status_code=response.status_code
+                status_code=response.status_code,
             )
     except Exception:
-        # Frontend not available (local dev without frontend running)
         raise HTTPException(status_code=404, detail="Not found")
 
 
