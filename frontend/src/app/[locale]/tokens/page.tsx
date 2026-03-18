@@ -139,7 +139,10 @@ export default function TokensPage() {
           <p className="text-sm text-muted-foreground">
             Create personal tokens to authenticate with the MCP server.
           </p>
-          <Button onClick={login}>Sign in with GitHub</Button>
+          <Button onClick={login}>
+            <Key className="mr-2 h-4 w-4" />
+            Get MCP Token
+          </Button>
         </div>
       </div>
     )
