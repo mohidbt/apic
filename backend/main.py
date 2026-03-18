@@ -1325,6 +1325,76 @@ async def get_api_versions(
 # In local development, frontend runs separately on port 3000
 # ============================================================================
 
+_MCP_PROXY_TIMEOUT_SECONDS = 30.0
+_MCP_PROXY_ALLOWED_REQUEST_HEADERS = {
+    "authorization",
+    "content-type",
+    "accept",
+    "last-event-id",
+    "mcp-session-id",
+    "user-agent",
+}
+_MCP_PROXY_BLOCKED_RESPONSE_HEADERS = {
+    "connection",
+    "content-length",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+}
+
+
+@app.api_route("/mcp", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/mcp/{mcp_path:path}", methods=["GET", "POST", "OPTIONS"])
+async def proxy_mcp(request: Request, mcp_path: str = ""):
+    """
+    Reverse-proxy MCP traffic to the internal MCP process.
+    This enables one public HTTPS endpoint (`/mcp`) for clients.
+    """
+    target_url = f"http://localhost:8080/{mcp_path}".rstrip("/")
+    if not mcp_path:
+        target_url = "http://localhost:8080/"
+
+    if request.url.query:
+        target_url = f"{target_url}?{request.url.query}"
+
+    proxy_headers = {
+        name: value
+        for name, value in request.headers.items()
+        if name.lower() in _MCP_PROXY_ALLOWED_REQUEST_HEADERS
+    }
+    body = await request.body()
+
+    try:
+        async with httpx.AsyncClient(
+            follow_redirects=False,
+            timeout=_MCP_PROXY_TIMEOUT_SECONDS,
+        ) as client:
+            upstream = await client.request(
+                method=request.method,
+                url=target_url,
+                headers=proxy_headers,
+                content=body if body else None,
+            )
+    except Exception as exc:
+        logger.error("MCP proxy error target=%s err=%s", target_url, exc)
+        raise HTTPException(status_code=502, detail="MCP upstream unavailable")
+
+    response = Response(
+        content=upstream.content,
+        status_code=upstream.status_code,
+        media_type=upstream.headers.get("content-type"),
+    )
+    for header_name, header_value in upstream.headers.items():
+        if header_name.lower() in _MCP_PROXY_BLOCKED_RESPONSE_HEADERS:
+            continue
+        response.headers[header_name] = header_value
+    return response
+
+
 @app.get("/")
 async def frontend_root():
     """Proxy to frontend on port 3000 (production) or show API docs (development)"""

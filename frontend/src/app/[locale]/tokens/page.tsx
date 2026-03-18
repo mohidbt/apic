@@ -45,7 +45,7 @@ export default function TokensPage() {
   const [copied, setCopied] = useState(false)
   const [configCopied, setConfigCopied] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [mcpUrl, setMcpUrl] = useState('https://api-ingest.com:8080/')
+  const [mcpUrl, setMcpUrl] = useState('https://api-ingest.com/mcp')
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -72,7 +72,7 @@ export default function TokensPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const { protocol, hostname } = window.location
-    setMcpUrl(`${protocol}//${hostname}:8080/`)
+    setMcpUrl(`${protocol}//${hostname}/mcp`)
   }, [])
 
   async function handleCreate() {
@@ -306,8 +306,8 @@ export default function TokensPage() {
               {configCopied ? 'Copied JSON' : 'Copy MCP JSON'}
             </Button>
             <p className="text-xs text-muted-foreground">
-              If your deployment reverse-proxies MCP on <code>/mcp</code>, replace <code>url</code>{' '}
-              with <code>https://your-domain/mcp</code>.
+              If your deployment exposes MCP directly on port <code>8080</code>, replace{' '}
+              <code>url</code> with <code>http://your-domain:8080/</code> instead.
             </p>
           </div>
         </section>
