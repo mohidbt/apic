@@ -9,6 +9,7 @@ export interface AuthUser {
   name: string | null
   avatar_url: string | null
   created_at: string
+  is_admin: boolean
 }
 
 interface AuthState {

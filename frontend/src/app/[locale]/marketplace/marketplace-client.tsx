@@ -23,11 +23,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { AppHeader } from '@/components/app-header'
 import { SpecDetailModal } from '@/components/spec-detail-modal'
-import { Search, ChevronLeft, ChevronRight, Package } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Package, Trash2 } from 'lucide-react'
 import { ApiSpec, SpecDetail, Tag } from '@/types/api-spec'
-import { fetchSpecs, fetchSpecDetail, formatFileSize, formatDate, formatTokenCount } from '@/lib/api'
+import { fetchSpecs, fetchSpecDetail, formatFileSize, formatDate, formatTokenCount, deleteSpec } from '@/lib/api'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
+import { useAuth } from '@/lib/auth-context'
 
 type TabType = 'recent' | 'trending' | 'popular'
 
@@ -39,6 +40,7 @@ interface MarketplaceClientProps {
 }
 
 export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, starCount }: MarketplaceClientProps) {
+  const { user } = useAuth()
   const [specs, setSpecs] = useState<ApiSpec[]>(initialSpecs)
   const [tags] = useState<Tag[]>(initialTags)
   const [selectedTag, setSelectedTag] = useState<string>('all')
@@ -50,6 +52,7 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
   const [activeTab, setActiveTab] = useState<TabType>('recent')
   const [selectedSpec, setSelectedSpec] = useState<SpecDetail | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const isAdmin = !!user?.is_admin
   
   const pageSize = 20
 
@@ -102,6 +105,25 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
     } catch (error) {
       console.error('Failed to fetch spec detail:', error)
       toast.error('Failed to load spec details')
+    }
+  }
+
+  const handleDeleteSpec = async (spec: ApiSpec) => {
+    if (!isAdmin) {
+      toast.error('Admin access required')
+      return
+    }
+    const confirmed = window.confirm(`Delete "${spec.name} v${spec.version}" from the marketplace?`)
+    if (!confirmed) return
+
+    try {
+      await deleteSpec(spec.id)
+      setSpecs((prev) => prev.filter((s) => s.id !== spec.id))
+      setTotalSpecs((prev) => Math.max(0, prev - 1))
+      toast.success('Spec deleted')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete spec'
+      toast.error(message)
     }
   }
 
@@ -172,6 +194,8 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
               specs={specs}
               loading={loading}
               onRowClick={handleRowClick}
+              isAdmin={isAdmin}
+              onDeleteSpec={handleDeleteSpec}
             />
           </TabsContent>
 
@@ -180,6 +204,8 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
               specs={specs}
               loading={loading}
               onRowClick={handleRowClick}
+              isAdmin={isAdmin}
+              onDeleteSpec={handleDeleteSpec}
             />
           </TabsContent>
 
@@ -188,6 +214,8 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
               specs={specs}
               loading={loading}
               onRowClick={handleRowClick}
+              isAdmin={isAdmin}
+              onDeleteSpec={handleDeleteSpec}
             />
           </TabsContent>
         </Tabs>
@@ -257,9 +285,11 @@ interface SpecsTableProps {
   specs: ApiSpec[]
   loading: boolean
   onRowClick: (spec: ApiSpec) => void
+  isAdmin: boolean
+  onDeleteSpec: (spec: ApiSpec) => void
 }
 
-function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
+function SpecsTable({ specs, loading, onRowClick, isAdmin, onDeleteSpec }: SpecsTableProps) {
   if (loading) {
     return (
       <div className="rounded-lg border">
@@ -274,6 +304,7 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                 <TableHead className="hidden sm:table-cell">SIZE</TableHead>
                 <TableHead className="hidden lg:table-cell">TOKENS</TableHead>
                 <TableHead className="hidden lg:table-cell">TAGS</TableHead>
+                {isAdmin && <TableHead className="w-16">ACTIONS</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -286,6 +317,7 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                   <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-14" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                  {isAdmin && <TableCell><Skeleton className="h-8 w-8" /></TableCell>}
                 </TableRow>
               ))}
             </TableBody>
@@ -313,6 +345,7 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
               <TableHead className="font-semibold hidden sm:table-cell">SIZE</TableHead>
               <TableHead className="font-semibold hidden lg:table-cell">TOKENS</TableHead>
               <TableHead className="font-semibold hidden lg:table-cell">TAGS</TableHead>
+              {isAdmin && <TableHead className="font-semibold w-16">ACTIONS</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -360,6 +393,21 @@ function SpecsTable({ specs, loading, onRowClick }: SpecsTableProps) {
                     )}
                   </div>
                 </TableCell>
+                {isAdmin && (
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDeleteSpec(spec)
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

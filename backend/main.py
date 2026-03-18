@@ -61,6 +61,9 @@ GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
 SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me-in-production")
 SESSION_MAX_AGE = int(os.getenv("SESSION_MAX_AGE", "86400"))  # 24h
 
+ADMIN_GITHUB_LOGINS = {"mohidbt"}
+ADMIN_EMAILS = {"mohidfbutt@gmail.com"}
+
 ALLOWED_EXTENSIONS = [".yaml", ".yml", ".json", ".raml", ".apib", ".wsdl", ".graphql", ".gql"]
 FORMAT_MAP = {
     ".yaml": "yaml", ".yml": "yaml", ".json": "json",
@@ -824,6 +827,22 @@ async def health_check():
 # ============================================================================
 
 
+def _is_admin_identity(github_login: Optional[str], email: Optional[str]) -> bool:
+    login_ok = (github_login or "").strip().lower() in ADMIN_GITHUB_LOGINS
+    email_ok = (email or "").strip().lower() in ADMIN_EMAILS
+    return login_ok or email_ok
+
+
+def _decode_session_claims(request: Request) -> Dict[str, Any]:
+    token = request.cookies.get("session")
+    if not token:
+        return {}
+    try:
+        return jwt.decode(token, SESSION_SECRET, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        return {}
+
+
 def _get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     """Extract current user from session JWT cookie. Raises 401 if invalid."""
     token = request.cookies.get("session")
@@ -840,6 +859,17 @@ def _get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
+def _require_admin(
+    request: Request,
+    user: User = Depends(_get_current_user),
+) -> User:
+    claims = _decode_session_claims(request)
+    session_email = claims.get("gh_email")
+    if not _is_admin_identity(user.github_login, session_email):
+        raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
 
@@ -878,16 +908,46 @@ async def auth_github(request: Request, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="Failed to fetch GitHub profile")
         gh = user_resp.json()
 
+        gh_email = (gh.get("email") or "").strip() or None
+        if not gh_email:
+            # read:user may not include private emails. Best effort lookup.
+            emails_resp = await client.get(
+                "https://api.github.com/user/emails",
+                headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+                timeout=10.0,
+            )
+            if emails_resp.status_code == 200:
+                emails_data = emails_resp.json()
+                if isinstance(emails_data, list):
+                    primary = next(
+                        (
+                            e for e in emails_data
+                            if isinstance(e, dict) and e.get("primary") and e.get("verified")
+                        ),
+                        None,
+                    )
+                    fallback = next(
+                        (
+                            e for e in emails_data
+                            if isinstance(e, dict) and e.get("verified")
+                        ),
+                        None,
+                    )
+                    picked = primary or fallback
+                    gh_email = (picked or {}).get("email")
+
     github_id = gh["id"]
+    github_login = gh.get("login", "")
+    is_admin = _is_admin_identity(github_login, gh_email)
     user = db.query(User).filter(User.github_id == github_id).first()
     if user:
-        user.github_login = gh.get("login", user.github_login)
+        user.github_login = github_login or user.github_login
         user.name = gh.get("name") or user.name
         user.avatar_url = gh.get("avatar_url") or user.avatar_url
     else:
         user = User(
             github_id=github_id,
-            github_login=gh.get("login", ""),
+            github_login=github_login,
             name=gh.get("name"),
             avatar_url=gh.get("avatar_url"),
         )
@@ -896,12 +956,17 @@ async def auth_github(request: Request, db: Session = Depends(get_db)):
     db.refresh(user)
 
     session_token = jwt.encode(
-        {"sub": str(user.id), "exp": datetime.now(timezone.utc) + timedelta(seconds=SESSION_MAX_AGE)},
+        {
+            "sub": str(user.id),
+            "gh_email": gh_email,
+            "is_admin": is_admin,
+            "exp": datetime.now(timezone.utc) + timedelta(seconds=SESSION_MAX_AGE),
+        },
         SESSION_SECRET,
         algorithm="HS256",
     )
 
-    response = JSONResponse(content={"user": user.to_dict()})
+    response = JSONResponse(content={"user": user.to_dict(is_admin=is_admin)})
     response.set_cookie(
         key="session",
         value=session_token,
@@ -915,9 +980,11 @@ async def auth_github(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/api/auth/me")
-async def auth_me(user: User = Depends(_get_current_user)):
+async def auth_me(request: Request, user: User = Depends(_get_current_user)):
     """Return the currently logged-in user."""
-    return {"user": user.to_dict()}
+    claims = _decode_session_claims(request)
+    is_admin = _is_admin_identity(user.github_login, claims.get("gh_email"))
+    return {"user": user.to_dict(is_admin=is_admin)}
 
 
 @app.post("/api/auth/logout")
@@ -1070,6 +1137,7 @@ async def get_spec_detail(
 @app.delete("/api/specs/{spec_id}")
 async def delete_spec_endpoint(
     spec_id: int,
+    _admin: User = Depends(_require_admin),
     db: Session = Depends(get_db)
 ):
     """

@@ -70,9 +70,16 @@ def _make_user(db, github_id=9999, login="testuser"):
     return user
 
 
-def _mint_jwt(user_id: int, secret: str = SESSION_SECRET, expired: bool = False):
+def _mint_jwt(
+    user_id: int,
+    secret: str = SESSION_SECRET,
+    expired: bool = False,
+    gh_email: str | None = None,
+):
     delta = timedelta(seconds=-10) if expired else timedelta(seconds=SESSION_MAX_AGE)
     payload = {"sub": str(user_id), "exp": datetime.now(timezone.utc) + delta}
+    if gh_email:
+        payload["gh_email"] = gh_email
     return pyjwt.encode(payload, secret, algorithm="HS256")
 
 
@@ -152,6 +159,25 @@ class TestAuthAPI:
         data = r.json()
         assert data["user"]["github_login"] == "testuser"
         assert data["user"]["id"] == user.id
+        assert data["user"]["is_admin"] is False
+
+    def test_auth_me_admin_by_login(self):
+        db = _TestSession()
+        user = _make_user(db, github_id=7777, login="mohidbt")
+        token = _mint_jwt(user.id)
+        db.close()
+        r = client.get("/api/auth/me", cookies={"session": token})
+        assert r.status_code == 200
+        assert r.json()["user"]["is_admin"] is True
+
+    def test_auth_me_admin_by_email_claim(self):
+        db = _TestSession()
+        user = _make_user(db, github_id=7778, login="someuser")
+        token = _mint_jwt(user.id, gh_email="mohidfbutt@gmail.com")
+        db.close()
+        r = client.get("/api/auth/me", cookies={"session": token})
+        assert r.status_code == 200
+        assert r.json()["user"]["is_admin"] is True
 
     def test_auth_github_missing_code(self):
         r = client.post("/api/auth/github", json={})
@@ -275,6 +301,58 @@ class TestTokenCRUD:
         # Bob cannot revoke Alice's token
         r = client.delete(f"/api/tokens/{token_id}", cookies=cookies_b)
         assert r.status_code == 404
+
+
+class TestMarketplaceAdminDelete:
+    def _seed_spec(self):
+        db = _TestSession()
+        spec = ApiSpec(
+            name="AdminDeleteAPI",
+            version="1.0.0",
+            original_format="yaml",
+            original_content="openapi: '3.0.0'\ninfo:\n  title: AdminDeleteAPI\n  version: 1.0.0\npaths: {}\n",
+            markdown_content="# AdminDeleteAPI",
+        )
+        db.add(spec)
+        db.commit()
+        db.refresh(spec)
+        sid = spec.id
+        db.close()
+        return sid
+
+    def test_delete_spec_requires_auth(self):
+        spec_id = self._seed_spec()
+        r = client.delete(f"/api/specs/{spec_id}")
+        assert r.status_code == 401
+
+    def test_delete_spec_forbidden_for_non_admin(self):
+        db = _TestSession()
+        user = _make_user(db, github_id=2001, login="alice")
+        token = _mint_jwt(user.id)
+        db.close()
+        spec_id = self._seed_spec()
+        r = client.delete(f"/api/specs/{spec_id}", cookies={"session": token})
+        assert r.status_code == 403
+
+    def test_delete_spec_allowed_for_admin_login(self):
+        db = _TestSession()
+        user = _make_user(db, github_id=2002, login="mohidbt")
+        token = _mint_jwt(user.id)
+        db.close()
+        spec_id = self._seed_spec()
+        r = client.delete(f"/api/specs/{spec_id}", cookies={"session": token})
+        assert r.status_code == 200
+        assert r.json()["id"] == spec_id
+
+    def test_delete_spec_allowed_for_admin_email(self):
+        db = _TestSession()
+        user = _make_user(db, github_id=2003, login="another-user")
+        token = _mint_jwt(user.id, gh_email="mohidfbutt@gmail.com")
+        db.close()
+        spec_id = self._seed_spec()
+        r = client.delete(f"/api/specs/{spec_id}", cookies={"session": token})
+        assert r.status_code == 200
+        assert r.json()["id"] == spec_id
 
 
 # ======================================================================

@@ -22,7 +22,7 @@ class User(Base):
 
     tokens = relationship("ApiToken", back_populates="user", cascade="all, delete-orphan")
 
-    def to_dict(self):
+    def to_dict(self, is_admin: bool = False):
         return {
             "id": self.id,
             "github_id": self.github_id,
@@ -30,6 +30,7 @@ class User(Base):
             "name": self.name,
             "avatar_url": self.avatar_url,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "is_admin": is_admin,
         }
 
     def __repr__(self):

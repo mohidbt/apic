@@ -225,6 +225,30 @@ export async function fetchSpecTools(id: number): Promise<ToolSchema[]> {
 }
 
 /**
+ * Delete a spec (admin only).
+ */
+export async function deleteSpec(id: number): Promise<void> {
+  const API_BASE_URL = getApiBaseUrl()
+  const response = await fetch(`${API_BASE_URL}/api/specs/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    let message = `Failed to delete spec: ${response.statusText}`
+    try {
+      const body = await response.json()
+      if (body?.detail) {
+        message = body.detail
+      }
+    } catch {
+      // Keep fallback message.
+    }
+    throw new Error(message)
+  }
+}
+
+/**
  * Fetch GitHub repository statistics (cached on backend)
  * Server-side fetching with Next.js revalidation (1 hour)
  */

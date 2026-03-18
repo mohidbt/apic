@@ -10,7 +10,7 @@ export async function GET() {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'read:user',
+    scope: 'read:user user:email',
   })
 
   return NextResponse.redirect(`https://github.com/login/oauth/authorize?${params}`)
