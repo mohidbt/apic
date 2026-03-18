@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { Link } from '@/i18n/navigation'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -18,8 +19,37 @@ interface AppHeaderProps {
   starCount?: number
 }
 
-export function AppHeader({ starCount = 0 }: AppHeaderProps) {
+export function AppHeader({ starCount }: AppHeaderProps) {
   const { user, isLoading, login, logout } = useAuth()
+  const [resolvedStarCount, setResolvedStarCount] = useState<number | null>(
+    typeof starCount === 'number' ? starCount : null
+  )
+
+  useEffect(() => {
+    if (typeof starCount === 'number') {
+      setResolvedStarCount(starCount)
+      return
+    }
+
+    let isCancelled = false
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
+
+    fetch(`${apiBase}/api/github/stats`)
+      .then(async (res) => {
+        if (!res.ok) return
+        const data = await res.json()
+        const nextCount =
+          typeof data?.stargazers_count === 'number' ? data.stargazers_count : null
+        if (!isCancelled) {
+          setResolvedStarCount(nextCount)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      isCancelled = true
+    }
+  }, [starCount])
 
   return (
     <header className="border-b border-border bg-card">
@@ -45,10 +75,10 @@ export function AppHeader({ starCount = 0 }: AppHeaderProps) {
           >
             <Github className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">GitHub</span>
-            {starCount > 0 && (
+            {resolvedStarCount !== null && (
               <div className="flex items-center">
                 <Star className="h-4 w-4 fill-primary text-primary" />
-                <span className="ml-1 text-sm text-muted-foreground">{starCount}</span>
+                <span className="ml-1 text-sm text-muted-foreground">{resolvedStarCount}</span>
               </div>
             )}
           </a>
