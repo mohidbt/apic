@@ -822,6 +822,34 @@ async def health_check():
     return {"status": "healthy"}
 
 
+@app.get("/api/mcp/health")
+async def mcp_health_check():
+    """
+    Check whether the internal MCP HTTP server is reachable.
+    Healthy states:
+      - 401 (expected when no bearer token is provided)
+      - 200 (if MCP auth is disabled in a non-prod setup)
+    """
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            response = await client.get("http://localhost:8080/")
+        return {
+            "status": "healthy" if response.status_code in (200, 401) else "degraded",
+            "upstream_status_code": response.status_code,
+            "upstream_url": "http://localhost:8080/",
+            "note": "401 is expected when MCP bearer auth is enabled.",
+        }
+    except Exception as exc:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "upstream_url": "http://localhost:8080/",
+                "error": str(exc),
+            },
+        )
+
+
 # ============================================================================
 # Auth + Token Endpoints
 # ============================================================================
