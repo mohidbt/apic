@@ -1353,7 +1353,7 @@ _FRONTEND_API_PREFIXES = ("api/auth/github",)
 
 
 @app.get("/{path:path}")
-async def catch_all(path: str):
+async def catch_all(path: str, request: Request):
     """Proxy non-API requests to frontend (production deployment)"""
     # /api routes belong to FastAPI, except Next.js auth routes which must
     # be forwarded to the frontend so the OAuth redirect/callback works.
@@ -1361,13 +1361,27 @@ async def catch_all(path: str):
         raise HTTPException(status_code=404, detail="API endpoint not found")
 
     try:
+        query = request.url.query
+        target_url = f"http://localhost:3000/{path}"
+        if query:
+            target_url = f"{target_url}?{query}"
+
+        proxy_headers = {}
+        if request.headers.get("cookie"):
+            proxy_headers["cookie"] = request.headers["cookie"]
+        if request.headers.get("user-agent"):
+            proxy_headers["user-agent"] = request.headers["user-agent"]
+
         async with httpx.AsyncClient(follow_redirects=False, timeout=5.0) as client:
-            response = await client.get(f"http://localhost:3000/{path}", timeout=5.0)
+            response = await client.get(target_url, headers=proxy_headers, timeout=5.0)
             if response.status_code in (301, 302, 303, 307, 308):
-                return RedirectResponse(
-                    url=response.headers.get("location", f"/{path}"),
-                    status_code=response.status_code,
-                )
+                location = response.headers.get("location", f"/{path}")
+                public_origin = f"{request.url.scheme}://{request.headers.get('host', '')}"
+                if location.startswith("http://localhost:3000"):
+                    location = location.replace("http://localhost:3000", public_origin, 1)
+                elif location.startswith("http://127.0.0.1:3000"):
+                    location = location.replace("http://127.0.0.1:3000", public_origin, 1)
+                return RedirectResponse(url=location, status_code=response.status_code)
             return Response(
                 content=response.content,
                 media_type=response.headers.get("content-type", "text/html"),
