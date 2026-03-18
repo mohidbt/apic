@@ -152,7 +152,7 @@ export default function TokensPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="container mx-auto max-w-3xl px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">API Tokens</h1>
             <p className="text-sm text-muted-foreground">
@@ -167,7 +167,7 @@ export default function TokensPage() {
                 Create Token
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>{rawToken ? 'Token Created' : 'Create API Token'}</DialogTitle>
                 <DialogDescription>
@@ -179,8 +179,8 @@ export default function TokensPage() {
 
               {rawToken ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 overflow-x-auto rounded-md border bg-muted px-3 py-2 text-sm">
+                  <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                    <code className="block min-w-0 overflow-x-auto whitespace-nowrap rounded-md border bg-muted px-3 py-2 text-sm">
                       {rawToken}
                     </code>
                     <Button variant="outline" size="icon" onClick={handleCopy}>
