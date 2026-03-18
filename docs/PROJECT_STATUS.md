@@ -1,6 +1,6 @@
 # Project Status
 
-**Last Updated:** October 12, 2025  
+**Last Updated:** March 18, 2026  
 **Status:** ✅ Production Ready
 
 ## 🎯 Project Overview
@@ -26,6 +26,9 @@ APIIngest is a full-stack application that converts OpenAPI specifications to LL
 - ✅ Health check endpoint
 - ✅ Error handling
 - ✅ API documentation (OpenAPI)
+- ✅ GitHub OAuth session auth (`/api/auth/github`, `/api/auth/me`, `/api/auth/logout`)
+- ✅ API token management (`/api/tokens`) for MCP clients
+- ✅ Admin-only marketplace deletion (`DELETE /api/specs/{id}`)
 
 ### Frontend (Next.js)
 - ✅ Drag-and-drop file upload
@@ -36,6 +39,9 @@ APIIngest is a full-stack application that converts OpenAPI specifications to LL
 - ✅ Responsive design
 - ✅ Environment variable support
 - ✅ Automatic file download
+- ✅ GitHub login/logout flow
+- ✅ Tokens management UI
+- ✅ Admin-only delete action in marketplace UI
 
 ### Development Experience
 - ✅ Development helper scripts
@@ -140,6 +146,7 @@ APIIngest is a full-stack application that converts OpenAPI specifications to LL
 1. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Koyeb deployment
 2. [.koyeb/config.yaml](.koyeb/config.yaml) - Deployment config
 3. [docker-compose.yml](docker-compose.yml) - Docker setup
+4. [.cursor/koyeb-env-reference.md](.cursor/koyeb-env-reference.md) - Current Koyeb env values/reference (local-only)
 
 ## 🐛 Bug Tracking
 
@@ -158,13 +165,15 @@ To report bugs:
 - ✅ No persistent storage (files cleaned up)
 - ✅ HTTPS ready (via deployment platform)
 - ✅ Environment variables for secrets
+- ✅ GitHub OAuth + session cookies
+- ✅ Admin-gated destructive operation for marketplace deletion
 
 ### Security Considerations
-- No authentication required (by design)
+- Authentication is required for token management and admin operations
 - Uploaded files are processed in-memory
 - Temporary files are cleaned up immediately
-- No user data stored
-- No external API calls from backend
+- User identities and API tokens are stored in database
+- Backend makes external API calls to GitHub for OAuth profile/email exchange
 
 ## 📈 Performance
 

@@ -1381,12 +1381,19 @@ async def catch_all(path: str, request: Request):
                     location = location.replace("http://localhost:3000", public_origin, 1)
                 elif location.startswith("http://127.0.0.1:3000"):
                     location = location.replace("http://127.0.0.1:3000", public_origin, 1)
-                return RedirectResponse(url=location, status_code=response.status_code)
-            return Response(
+                proxied_redirect = RedirectResponse(url=location, status_code=response.status_code)
+                for cookie_header in response.headers.get_list("set-cookie"):
+                    proxied_redirect.headers.append("set-cookie", cookie_header)
+                return proxied_redirect
+
+            proxied_response = Response(
                 content=response.content,
                 media_type=response.headers.get("content-type", "text/html"),
                 status_code=response.status_code,
             )
+            for cookie_header in response.headers.get_list("set-cookie"):
+                proxied_response.headers.append("set-cookie", cookie_header)
+            return proxied_response
     except Exception:
         raise HTTPException(status_code=404, detail="Not found")
 
