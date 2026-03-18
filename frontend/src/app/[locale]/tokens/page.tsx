@@ -43,7 +43,9 @@ export default function TokensPage() {
   const [newLabel, setNewLabel] = useState('')
   const [rawToken, setRawToken] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [configCopied, setConfigCopied] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [mcpUrl, setMcpUrl] = useState('https://api-ingest.com:8080/')
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -66,6 +68,12 @@ export default function TokensPage() {
     else if (!authLoading) setLoading(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const { protocol, hostname } = window.location
+    setMcpUrl(`${protocol}//${hostname}:8080/`)
+  }, [])
 
   async function handleCreate() {
     if (!newLabel.trim()) return
@@ -116,6 +124,27 @@ export default function TokensPage() {
       setRawToken(null)
       setNewLabel('')
     }
+  }
+
+  const mcpConfigJson = JSON.stringify(
+    {
+      mcpServers: {
+        APIIngest: {
+          url: mcpUrl,
+          headers: {
+            Authorization: `Bearer ${rawToken ?? '<PASTE_MCP_TOKEN_HERE>'}`,
+          },
+        },
+      },
+    },
+    null,
+    2
+  )
+
+  function handleCopyConfig() {
+    navigator.clipboard.writeText(mcpConfigJson)
+    setConfigCopied(true)
+    setTimeout(() => setConfigCopied(false), 2000)
   }
 
   if (authLoading || loading) {
@@ -257,6 +286,31 @@ export default function TokensPage() {
             </Table>
           </div>
         )}
+
+        <section className="mt-8 rounded-lg border p-4 sm:p-6">
+          <h2 className="text-lg font-semibold">Connect an MCP client</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add this JSON schema to your <code>.cursor/mcp.json</code>. It defines one MCP server
+            with URL + Bearer auth header.
+          </p>
+
+          <div className="mt-4 rounded-md border bg-muted/40 p-3">
+            <pre className="overflow-x-auto text-xs sm:text-sm">
+              <code>{mcpConfigJson}</code>
+            </pre>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={handleCopyConfig}>
+              {configCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+              {configCopied ? 'Copied JSON' : 'Copy MCP JSON'}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              If your deployment reverse-proxies MCP on <code>/mcp</code>, replace <code>url</code>{' '}
+              with <code>https://your-domain/mcp</code>.
+            </p>
+          </div>
+        </section>
       </main>
     </div>
   )
