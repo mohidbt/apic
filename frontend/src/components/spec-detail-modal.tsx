@@ -148,16 +148,16 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
           event.preventDefault()
           scrollRef.current.scrollBy({ top: event.deltaY })
         }}
-        className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border-2 transition-shadow duration-300 shadow-[0_18px_60px_-20px_rgba(0,160,0,0.55)] dark:shadow-[0_18px_60px_-20px_rgba(34,255,34,0.55)] hover:shadow-[0_25px_100px_-20px_rgba(0,160,0,0.75)] dark:hover:shadow-[0_25px_100px_-20px_rgba(34,255,34,0.75)]"
+        className="max-w-4xl max-h-[90vh] flex w-[calc(100vw-2rem)] flex-col overflow-hidden border-2 transition-shadow duration-300 sm:w-full shadow-[0_18px_60px_-20px_rgba(0,160,0,0.55)] dark:shadow-[0_18px_60px_-20px_rgba(34,255,34,0.55)] hover:shadow-[0_25px_100px_-20px_rgba(0,160,0,0.75)] dark:hover:shadow-[0_25px_100px_-20px_rgba(34,255,34,0.75)]"
       >
         <DialogHeader className="pb-4 border-b">
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
+          <DialogTitle className="min-w-0 break-words text-2xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
             {spec.name}
           </DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="w-full justify-start gap-1 bg-transparent border-b rounded-none px-0 h-auto pb-0">
+          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto border-b bg-transparent px-0 pb-0 rounded-none">
             <TabsTrigger
               value="overview"
               className="rounded-b-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary gap-1.5"
@@ -193,7 +193,7 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
             {/* ── Overview Tab ── */}
             <TabsContent value="overview" className="mt-0 pt-4">
               <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <MetaCard icon={Package} label="Version" value={spec.version} />
                   {spec.provider && <MetaCard icon={User} label="Provider" value={spec.provider} />}
                   <MetaCard icon={Calendar} label="Uploaded" value={formatDate(spec.uploaded_at)} />
@@ -218,7 +218,7 @@ export function SpecDetailModal({ spec, open, onClose }: SpecDetailModalProps) {
 
                 <Separator />
 
-                <div className="flex gap-3 px-1">
+                <div className="flex flex-col gap-3 px-1 sm:flex-row">
                   <Button
                     onClick={handleDownloadMarkdown}
                     disabled={downloading !== null}
@@ -483,9 +483,9 @@ function MetaCard({ icon: Icon, label, value, truncate }: {
       <div className="p-2 rounded-md bg-primary/10">
         <Icon className="h-4 w-4 text-primary" />
       </div>
-      <div className={truncate ? 'min-w-0 flex-1' : ''}>
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`text-sm font-medium ${truncate ? 'truncate' : ''}`}>{value}</p>
+        <p className={`text-sm font-medium ${truncate ? 'truncate' : 'break-words'}`}>{value}</p>
       </div>
     </div>
   )

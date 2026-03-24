@@ -383,7 +383,7 @@ export default function HomeClient({ starCount }: HomeClientProps) {
               
               {selectedFile ? (
                 <div>
-                  <p className="mb-2 text-lg text-foreground">
+                  <p className="mb-2 max-w-full break-all text-lg text-foreground">
                     {selectedFile.name}
                   </p>
                   <p className="text-sm text-muted-foreground">

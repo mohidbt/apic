@@ -183,7 +183,7 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="mb-6">
-          <TabsList>
+          <TabsList className="w-full max-w-full justify-start overflow-x-auto">
             <TabsTrigger value="recent">Recent</TabsTrigger>
             <TabsTrigger value="trending">Trending</TabsTrigger>
             <TabsTrigger value="popular">Popular</TabsTrigger>

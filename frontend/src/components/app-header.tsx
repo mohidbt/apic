@@ -53,28 +53,30 @@ export function AppHeader({ starCount }: AppHeaderProps) {
 
   return (
     <header className="border-b border-border bg-card">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center space-x-2">
-          <Link href="/" className="text-2xl font-bold">
+      <div className="container mx-auto flex h-16 items-center justify-between gap-3 px-4">
+        <div className="min-w-0 shrink-0">
+          <Link href="/" className="text-xl font-bold sm:text-2xl">
             <span className="text-foreground">API Ingest</span>
           </Link>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-2 md:gap-3">
           <Link
             href="/marketplace"
-            className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
+            aria-label="Specs Marketplace"
+            className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted sm:px-3"
           >
-            <Package className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Specs Marketplace</span>
+            <Package className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <span className="hidden text-sm text-muted-foreground sm:inline">Specs Marketplace</span>
           </Link>
           <a
             href="https://github.com/mohidbt/apic"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
+            aria-label="GitHub"
+            className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted sm:px-3"
           >
-            <Github className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">GitHub</span>
+            <Github className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <span className="hidden text-sm text-muted-foreground sm:inline">GitHub</span>
             {resolvedStarCount !== null && (
               <div className="flex items-center">
                 <Star className="h-4 w-4 fill-primary text-primary" />
@@ -112,10 +114,11 @@ export function AppHeader({ starCount }: AppHeaderProps) {
             <button
               onClick={login}
               disabled={isLoading}
-              className="flex items-center space-x-2 rounded-lg px-3 py-2 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Get MCP Token"
+              className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
             >
-              <Key className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Get MCP Token</span>
+              <Key className="h-5 w-5 shrink-0 text-muted-foreground" />
+              <span className="hidden text-sm text-muted-foreground sm:inline">Get MCP Token</span>
             </button>
           )}
           <ThemeToggle />
