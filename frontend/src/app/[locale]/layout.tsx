@@ -1,6 +1,6 @@
 import { Toaster } from '@/components/ui/sonner'
 
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import type React from 'react'
 import '../../styles/globals.css'
 
@@ -33,3 +33,9 @@ export default async function RootLayout({
 }
 
 export const metadata: Metadata = { ...rootMetadata }
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}

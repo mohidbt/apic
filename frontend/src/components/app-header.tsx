@@ -63,24 +63,24 @@ export function AppHeader({ starCount }: AppHeaderProps) {
           <Link
             href="/marketplace"
             aria-label="Specs Marketplace"
-            className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted sm:px-3"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-2 py-2 transition-colors hover:bg-muted sm:px-3"
           >
             <Package className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <span className="hidden text-sm text-muted-foreground sm:inline">Specs Marketplace</span>
+            <span className="hidden text-sm text-muted-foreground lg:inline">Specs Marketplace</span>
           </Link>
           <a
             href="https://github.com/mohidbt/apic"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub"
-            className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted sm:px-3"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-2 py-2 transition-colors hover:bg-muted sm:px-3"
           >
             <Github className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <span className="hidden text-sm text-muted-foreground sm:inline">GitHub</span>
+            <span className="hidden text-sm text-muted-foreground lg:inline">GitHub</span>
             {resolvedStarCount !== null && (
               <div className="flex items-center">
                 <Star className="h-4 w-4 fill-primary text-primary" />
-                <span className="ml-1 text-sm text-muted-foreground">{resolvedStarCount}</span>
+                <span className="ml-1 hidden text-sm text-muted-foreground md:inline">{resolvedStarCount}</span>
               </div>
             )}
           </a>
@@ -115,10 +115,10 @@ export function AppHeader({ starCount }: AppHeaderProps) {
               onClick={login}
               disabled={isLoading}
               aria-label="Get MCP Token"
-              className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg px-2 py-2 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
             >
               <Key className="h-5 w-5 shrink-0 text-muted-foreground" />
-              <span className="hidden text-sm text-muted-foreground sm:inline">Get MCP Token</span>
+              <span className="hidden text-sm text-muted-foreground lg:inline">Get MCP Token</span>
             </button>
           )}
           <ThemeToggle />
