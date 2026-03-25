@@ -1,4 +1,4 @@
-# APIIngest - Let LLMs work with APIs
+# API Ingest - Let LLMs work with APIs 
 
 **Handy tool** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown optimized for AI codegen assistants. 
 [api-ingest.com](https://api-ingest.com/)
@@ -6,26 +6,25 @@
 
 [![Deploy to Koyeb](https://img.shields.io/badge/Deploy%20to-Koyeb-blue)](https://www.koyeb.com/)
 
-## Why?
+> *"AGGH 400, not again"*
 
-> *"AGGH 400 Bad Request"*
+Friday night. You finally have a peaceful moment to code your dream project — a cornflakes restock alert machine. You spin up Claude Code, the frontend looks great, but then your agent hits the Costco API and just... can't. 400 Bad requests everywhere. You tell it to read the docs. It scrapes 2 of 20 pages, gives up, and enters a confident hallucination loop.
 
-Friday night. You finally have a peaceful moment to code your dream project — a cornflakes restock alert machine. You spin up Claude Code, the frontend looks great, but then your agent hits an API and just... can't. Bad requests everywhere. You tell it to read the docs. It scrapes 2 of 20 pages, gives up, and enters a confident hallucination loop.
-
-API endpoint hallucination is one of the most common failure modes when coding with agents. And the existing workarounds all kinda suck:
+API endpoint hallucination is one of the most common failure modes when building applications with agents. And the existing workarounds all kinda suck:
 
 |  | Manual Spec Upload | Agent Web Search | Context7 | **API Ingest** |
 |---|---|---|---|---|
 | Structured for LLMs | ❌ raw schema with `$ref`s | ❌ scraped HTML | ❌ raw markdown dump | ✅ optimized format |
-| Deterministic | ✅ | ❌ loops & misses pages | ❌ semantic search | ✅ |
-| Token efficient | ❌ full spec in context | ❌ bloated page scrapes | ⚠️ chunks but noisy | ✅ loads only needed endpoint |
+| Accuracy | ✅ | ❌ loops & misses pages | ❌ semantic search | ✅ Deterministic Search|
+| Token efficient | ❌ full spec in context | ❌ bloated page scrapes | ✅ chunks (⚠️but noisy) | ✅ lazy loaded chunks |
 | Self-contained chunks | ❌ | ❌ | ⚠️ | ✅ each chunk stands alone |
 | Endpoint-level precision | ❌ | ❌ | ❌ | ✅ lookup by operationId / tag |
 | Zero manual effort | ❌ find & paste spec | ✅ | ✅ | ✅ |
 
-**API Ingest** takes OpenAPI specs and deterministically transforms them into LLM-optimized, chunked markdown — so your agent gets exactly the endpoint it needs, with auth, params, schemas, and curl examples baked in. No `$ref` chasing, no "lost in the middle", no hallucination loops. Available as MCP server, web UI, or CLI.
+**API Ingest** takes OpenAPI specs and deterministically transforms them into LLM-optimized, chunked markdown — so your agent gets exactly the endpoint it needs, with auth, params, schemas, and curl examples baked in. 
+Without `$ref` mayhem, no "lost in the middle", no hallucination loops. Available as MCP server, web UI, or CLI.
 
-> *This tool can die the day every API provider ships LLM-friendly searchable docs ([some are starting to](https://docs.readme.com/main/docs/mcp-servers)). But let's be honest — that's gonna take a while. Until then, happy ingesting.*
+> *YES! This tool should die the day every API provider outside of big tech offers LLM-friendly docs, ([e.g. via this](https://gitbook.com/docs/publishing-documentation/mcp-servers-for-published-docs)). But let's be honest — that's gonna take a while. Until then, happy ingesting 💉.*
 
 ## ✨ Features
 
