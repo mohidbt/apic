@@ -15,7 +15,7 @@ API endpoint hallucination is one of the most common failure modes when building
 |  | Manual Spec Upload | Agent Web Search | Context7 | **API Ingest** |
 |---|---|---|---|---|
 | Structured for LLMs | ❌ raw schema with `$ref`s | ❌ scraped HTML | ❌ raw markdown dump | ✅ optimized format |
-| Accuracy | ✅ | ❌ loops & misses pages | ❌ semantic search | ✅ Deterministic Search|
+| Accuracy | ✅ | ❌ loops & misses pages | ❌ semantic search | ✅ deterministic Search|
 | Token efficient | ❌ full spec in context | ❌ bloated page scrapes | ✅ chunks (⚠️but noisy) | ✅ lazy loaded chunks |
 | Self-contained chunks | ❌ | ❌ | ⚠️ | ✅ each chunk stands alone |
 | Endpoint-level precision | ❌ | ❌ | ❌ | ✅ lookup by operationId / tag |
