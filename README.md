@@ -1,8 +1,6 @@
 # API Ingest - Let LLMs work with APIs 
 
-**Handy tool** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown optimized for AI codegen assistants. 
-[api-ingest.com](https://api-ingest.com/)
-
+**Handy tool** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown optimized for codegen agents. 
 
 [![Deploy to Koyeb](https://img.shields.io/badge/Deploy%20to-Koyeb-blue)](https://www.koyeb.com/)
 
