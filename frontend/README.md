@@ -79,6 +79,8 @@ npm run test:e2e     # Run E2E tests
 npm run test:e2e:ui  # Run E2E tests with UI
 ```
 
+Testing files/config/reports are bundled under `frontend/testing/` (see `frontend/testing/README.md`).
+
 ### 💅 **Code Quality**
 ```bash
 npm run lint         # Run ESLint
