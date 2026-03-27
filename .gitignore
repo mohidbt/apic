@@ -66,6 +66,8 @@ backend/data/
 
 # Archive (optional - remove this line if you want to commit archived files)
 .archive/
+.cursor/
+.vscode/
 
 # Keep specific documentation files
 !README.md

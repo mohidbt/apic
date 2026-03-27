@@ -3,12 +3,6 @@
  * Matches backend Pydantic schemas
  */
 
-export interface Tag {
-  id: number
-  name: string
-  spec_count: number
-}
-
 export interface ApiSpec {
   id: number
   name: string

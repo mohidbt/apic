@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
@@ -14,17 +13,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AppHeader } from '@/components/app-header'
 import { SpecDetailModal } from '@/components/spec-detail-modal'
 import { Search, ChevronLeft, ChevronRight, Package, Trash2 } from 'lucide-react'
-import { ApiSpec, SpecDetail, Tag } from '@/types/api-spec'
+import { ApiSpec, SpecDetail } from '@/types/api-spec'
 import { fetchSpecs, fetchSpecDetail, formatFileSize, formatDate, formatTokenCount, deleteSpec } from '@/lib/api'
 import { toast } from 'sonner'
 import { Link } from '@/i18n/navigation'
@@ -34,16 +27,13 @@ type TabType = 'recent' | 'trending' | 'popular'
 
 interface MarketplaceClientProps {
   initialSpecs: ApiSpec[]
-  initialTags: Tag[]
   initialTotal: number
   starCount: number
 }
 
-export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, starCount }: MarketplaceClientProps) {
+export function MarketplaceClient({ initialSpecs, initialTotal, starCount }: MarketplaceClientProps) {
   const { user } = useAuth()
   const [specs, setSpecs] = useState<ApiSpec[]>(initialSpecs)
-  const [tags] = useState<Tag[]>(initialTags)
-  const [selectedTag, setSelectedTag] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(Math.ceil(initialTotal / 20))
@@ -59,7 +49,7 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
   // Fetch specs when filters change (skip initial load since we have server data)
   useEffect(() => {
     // Skip the initial load - we already have data from the server
-    if (currentPage === 1 && selectedTag === 'all' && searchQuery === '') {
+    if (currentPage === 1 && searchQuery === '') {
       return
     }
 
@@ -67,10 +57,9 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
       setLoading(true)
       
       try {
-        const tag = selectedTag === 'all' ? undefined : selectedTag
         const search = searchQuery.trim() || undefined
         
-        const data = await fetchSpecs(currentPage, pageSize, search, tag)
+        const data = await fetchSpecs(currentPage, pageSize, search)
         setSpecs(data.specs)
         setTotalSpecs(data.total)
         setTotalPages(Math.ceil(data.total / pageSize))
@@ -82,17 +71,11 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
       }
     }
     loadSpecs()
-  }, [currentPage, selectedTag, searchQuery, activeTab])
+  }, [currentPage, searchQuery, activeTab])
 
   // Handle search input with debounce
   const handleSearchChange = (value: string) => {
     setSearchQuery(value)
-    setCurrentPage(1) // Reset to first page
-  }
-
-  // Handle tag filter change
-  const handleTagChange = (value: string) => {
-    setSelectedTag(value)
     setCurrentPage(1) // Reset to first page
   }
 
@@ -154,7 +137,7 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
           </p>
         </div>
 
-        {/* Search and Filter Bar */}
+        {/* Search Bar */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -166,19 +149,6 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
               className="pl-10"
             />
           </div>
-          <Select value={selectedTag} onValueChange={handleTagChange}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filter by tag" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Tags</SelectItem>
-              {tags.map((tag) => (
-                <SelectItem key={tag.id} value={tag.name}>
-                  {tag.name} ({tag.spec_count})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Tabs */}
@@ -259,7 +229,7 @@ export function MarketplaceClient({ initialSpecs, initialTags, initialTotal, sta
             <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2">No specs found</h3>
             <p className="text-muted-foreground mb-4">
-              {searchQuery || selectedTag !== 'all'
+              {searchQuery
                 ? 'Try adjusting your search or filters'
                 : 'No API specs have been uploaded yet'}
             </p>
@@ -303,7 +273,6 @@ function SpecsTable({ specs, loading, onRowClick, isAdmin, onDeleteSpec }: Specs
                 <TableHead className="hidden lg:table-cell">UPLOADED</TableHead>
                 <TableHead className="hidden sm:table-cell">SIZE</TableHead>
                 <TableHead className="hidden lg:table-cell">TOKENS</TableHead>
-                <TableHead className="hidden lg:table-cell">TAGS</TableHead>
                 {isAdmin && <TableHead className="w-16">ACTIONS</TableHead>}
               </TableRow>
             </TableHeader>
@@ -316,7 +285,6 @@ function SpecsTable({ specs, loading, onRowClick, isAdmin, onDeleteSpec }: Specs
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-14" /></TableCell>
-                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   {isAdmin && <TableCell><Skeleton className="h-8 w-8" /></TableCell>}
                 </TableRow>
               ))}
@@ -344,7 +312,6 @@ function SpecsTable({ specs, loading, onRowClick, isAdmin, onDeleteSpec }: Specs
               <TableHead className="font-semibold hidden lg:table-cell">UPLOADED</TableHead>
               <TableHead className="font-semibold hidden sm:table-cell">SIZE</TableHead>
               <TableHead className="font-semibold hidden lg:table-cell">TOKENS</TableHead>
-              <TableHead className="font-semibold hidden lg:table-cell">TAGS</TableHead>
               {isAdmin && <TableHead className="font-semibold w-16">ACTIONS</TableHead>}
             </TableRow>
           </TableHeader>
@@ -378,20 +345,6 @@ function SpecsTable({ specs, loading, onRowClick, isAdmin, onDeleteSpec }: Specs
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden lg:table-cell">
                   {formatTokenCount(spec.token_count)}
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  <div className="flex flex-wrap gap-1">
-                    {spec.tags.slice(0, 2).map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {spec.tags.length > 2 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{spec.tags.length - 2}
-                      </Badge>
-                    )}
-                  </div>
                 </TableCell>
                 {isAdmin && (
                   <TableCell>

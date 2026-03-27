@@ -2,7 +2,7 @@
  * API service for interacting with the backend API
  */
 
-import { ApiSpec, ChunkedSpec, SpecDetail, SpecListResponse, Tag, ToolSchema } from '@/types/api-spec'
+import { ApiSpec, ChunkedSpec, SpecDetail, SpecListResponse, ToolSchema } from '@/types/api-spec'
 
 /**
  * Get the appropriate API base URL based on the environment
@@ -25,13 +25,12 @@ function getApiBaseUrl(): string {
 }
 
 /**
- * Fetch specs with pagination and optional filtering
+ * Fetch specs with pagination and optional search
  */
 export async function fetchSpecs(
   page: number = 1,
   limit: number = 20,
-  search?: string,
-  tag?: string
+  search?: string
 ): Promise<SpecListResponse> {
   const API_BASE_URL = getApiBaseUrl()
   const skip = (page - 1) * limit
@@ -39,10 +38,6 @@ export async function fetchSpecs(
     skip: skip.toString(),
     limit: limit.toString(),
   })
-
-  if (tag) {
-    params.append('tag', tag)
-  }
 
   let url = `${API_BASE_URL}/api/specs`
   
@@ -73,20 +68,6 @@ export async function fetchSpecDetail(id: number): Promise<SpecDetail> {
       throw new Error('Spec not found')
     }
     throw new Error(`Failed to fetch spec detail: ${response.statusText}`)
-  }
-
-  return response.json()
-}
-
-/**
- * Fetch all available tags with their spec counts
- */
-export async function fetchTags(): Promise<Tag[]> {
-  const API_BASE_URL = getApiBaseUrl()
-  const response = await fetch(`${API_BASE_URL}/api/tags`)
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch tags: ${response.statusText}`)
   }
 
   return response.json()

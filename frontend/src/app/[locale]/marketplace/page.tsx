@@ -1,17 +1,15 @@
-import { fetchSpecs, fetchTags, fetchGitHubStats } from '@/lib/api'
+import { fetchSpecs, fetchGitHubStats } from '@/lib/api'
 import { MarketplaceClient } from './marketplace-client'
 
 export default async function MarketplacePage() {
   // Fetch initial data on the server (including GitHub stats).
   // If the backend is temporarily unavailable, render a resilient empty state.
   let specsData: Awaited<ReturnType<typeof fetchSpecs>> = { specs: [], total: 0 }
-  let tags: Awaited<ReturnType<typeof fetchTags>> = []
   let githubStats: Awaited<ReturnType<typeof fetchGitHubStats>> = { stargazers_count: 0 }
 
   try {
-    ;[specsData, tags, githubStats] = await Promise.all([
+    ;[specsData, githubStats] = await Promise.all([
       fetchSpecs(1, 20), // First page with 20 items
-      fetchTags(),
       fetchGitHubStats(), // Fetch star count server-side
     ])
   } catch (error) {
@@ -21,7 +19,6 @@ export default async function MarketplacePage() {
   return (
     <MarketplaceClient
       initialSpecs={specsData.specs}
-      initialTags={tags}
       initialTotal={specsData.total}
       starCount={githubStats.stargazers_count}
     />
