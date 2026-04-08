@@ -481,8 +481,82 @@ class TestMCPResourcesAndTools:
         )
         result = convert_spec(sample_yaml, "yaml")
         parsed = _json.loads(result)
+        assert "conversion_id" in parsed
+        assert parsed["source_type"] == "local"
+        assert isinstance(parsed.get("token_count"), int)
+        assert parsed.get("token_threshold") == 4000
+        assert isinstance(parsed.get("full_markdown"), str)
         assert "manifest" in parsed
-        assert "endpoints" in parsed
+        assert isinstance(parsed.get("chunks_available"), list)
+        assert len(parsed["chunks_available"]) >= 1
+
+    def test_search_specs_tool(self):
+        import json as _json
+        from mcp_server import search_specs
+
+        sid = self._seed_spec()
+        db = _TestSession()
+        spec = db.query(ApiSpec).filter(ApiSpec.id == sid).first()
+        users_tag = Tag(name="users")
+        db.add(users_tag)
+        db.commit()
+        db.refresh(users_tag)
+        spec.tags.append(users_tag)
+        db.commit()
+        db.close()
+
+        by_query = _json.loads(search_specs(query="TestAPI"))
+        assert any(item["name"] == "TestAPI" for item in by_query)
+        by_tag = _json.loads(search_specs(tag="users"))
+        assert any(item["spec_id"] == sid for item in by_tag)
+
+    def test_load_spec_tool(self):
+        import json as _json
+        from mcp_server import load_spec
+
+        sid = self._seed_spec()
+        parsed = _json.loads(load_spec(sid))
+        assert parsed["spec_id"] == str(sid)
+        assert parsed["source_type"] == "marketplace"
+        assert isinstance(parsed.get("full_markdown"), str)
+        assert isinstance(parsed.get("chunks_available"), list)
+        assert "manifest" in parsed
+
+    def test_get_chunk_tool(self):
+        import json as _json
+        from mcp_server import get_chunk
+
+        sid = self._seed_spec()
+        parsed = _json.loads(get_chunk(str(sid), "marketplace", "endpoint", "getHello"))
+        assert parsed["source_type"] == "marketplace"
+        assert parsed["chunk_type"] == "endpoint"
+        assert "manifest" in parsed
+        assert "chunk_content" in parsed
+        assert "getHello" in parsed["chunk_content"]
+
+    def test_get_chunk_local(self):
+        import json as _json
+        from mcp_server import convert_spec, get_chunk
+
+        sample_yaml = (
+            "openapi: '3.0.0'\n"
+            "info:\n  title: LocalChunk\n  version: 1.0.0\n"
+            "paths:\n"
+            "  /ping:\n"
+            "    get:\n"
+            "      operationId: ping\n"
+            "      summary: Ping\n"
+            "      responses:\n"
+            "        '200':\n"
+            "          description: pong\n"
+        )
+        converted = _json.loads(convert_spec(sample_yaml, "yaml"))
+        conversion_id = converted["conversion_id"]
+        parsed = _json.loads(get_chunk(conversion_id, "local", "endpoint", "ping"))
+        assert parsed["source_type"] == "local"
+        assert parsed["chunk_type"] == "endpoint"
+        assert "manifest" in parsed
+        assert "ping" in parsed["chunk_content"]
 
     def test_convert_spec_to_tools(self):
         import json as _json

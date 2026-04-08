@@ -30,7 +30,7 @@ from transformation import OpenAPIToMarkdown, normalize_raml, normalize_apib, no
 import httpx
 import jwt
 import logging
-import tiktoken
+from utils import estimate_token_count
 
 # Import database models and CRUD operations
 from models.database import get_db, init_db, SessionLocal
@@ -395,18 +395,6 @@ async def process_conversion_job(
     finally:
         if temp_input_path and Path(temp_input_path).exists():
             Path(temp_input_path).unlink()
-
-
-def estimate_token_count(text: str, model: str = "gpt-4") -> int:
-    """
-    Estimate token count for markdown content using tiktoken.
-    Falls back to cl100k_base encoding if model lookup fails.
-    """
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        encoding = tiktoken.get_encoding("cl100k_base")
-    return len(encoding.encode(text))
 
 
 @asynccontextmanager
