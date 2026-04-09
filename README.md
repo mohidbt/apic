@@ -2,13 +2,11 @@
 
 **Handy tool** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown optimized for codegen agents. 
 
-[![Deploy to Koyeb](https://img.shields.io/badge/Deploy%20to-Koyeb-blue)](https://www.koyeb.com/)
-
 > *"AGGH 400, not again"*
 
-Friday night. You finally have a peaceful moment to code your dream project — a cornflakes restock alert machine. You spin up Claude Code, the frontend looks great, but then your agent hits the Costco API and just... can't. 400 Bad requests everywhere. You tell it to read the docs. It scrapes 2 of 20 pages, gives up, and enters a confident hallucination loop.
+Friday night. You finally have a peaceful moment to code your dream project — a cornflakes restock alert machine. You spin up Claude Code, the frontend looks great, but then your agent hits the Costco API and just... can't. 400 Bad requests everywhere. You tell it to read the docs online. It scrapes 5 of 20 pages, and enters a confident hallucination loop.
 
-API endpoint hallucination is one of the most common failure modes when building applications with agents. And the existing workarounds all kinda suck:
+API endpoint hallucination is one of the most common failure modes when building applications with agents. And the existing workarounds kinda suck:
 
 |  | Manual Spec Upload | Agent Web Search | Context7 | **API Ingest** |
 |---|---|---|---|---|
@@ -20,266 +18,19 @@ API endpoint hallucination is one of the most common failure modes when building
 | Zero manual effort | ❌ find & paste spec | ✅ | ✅ | ✅ |
 
 **API Ingest** takes OpenAPI specs and deterministically transforms them into LLM-optimized, chunked markdown — so your agent gets exactly the endpoint it needs, with auth, params, schemas, and curl examples baked in. 
-Without `$ref` mayhem, no "lost in the middle", no hallucination loops. Available as MCP server, web UI, or CLI.
+Available as MCP server, web UI, or CLI.
 
 > *YES! This tool should die the day every API provider outside of big tech offers LLM-friendly docs, ([e.g. via this](https://gitbook.com/docs/publishing-documentation/mcp-servers-for-published-docs)). But let's be honest — that's gonna take a while. Until then, happy ingesting 💉.*
 
-## ✨ Features
+---
 
-### Converter
-- **Three output modes** — Monolithic markdown, chunked JSON (progressive disclosure), and JSON Schema tool definitions
-- **Stable `operationId` anchors** — Each endpoint block includes its `operationId` for deterministic lookup
-- **Self-contained endpoint blocks** — Base URL, auth, params, schemas, and curl example repeated per block so each chunk stands alone
-- **Dereferences `$ref` schemas** — Inline references for readability
-- **Runnable curl examples** — Auto-generated with auth placeholders
-- **Strict separators** — Gitingest-style `====` delimiters prevent boundary confusion
-- **Tag grouping** — Organized by tags, alphabetically sorted
-- **Type normalization** — Clean type display (`string (uuid)`, `array<User>`, etc.)
-- **Token-aware** — Endpoint blocks target 2-4K tokens
+### Connect to MCP server
 
-### MCP Server
-- **Smart context loading** — Token-aware payloads let agents decide: use full markdown for small specs, or lazy-load individual chunks for large ones
-- **Two workflows** — `convert_spec` for local files, `search_specs` + `load_spec` for marketplace specs
-- **Chunk-level fetching** — `get_chunk` returns a single endpoint/tag/schema plus manifest, so each chunk is self-contained
-- **Content-hash caching** — Avoids re-converting the same spec on repeated requests
-
-### Web UI
-- **Tabbed spec explorer** — Overview, Chunks, Tool Schemas, and Full Markdown tabs
-- **Searchable chunk browser** — Filter endpoints and schemas by name within the Chunks tab
-- **Copy-friendly tool schemas** — Expandable JSON with one-click copy
-
-## 🚀 Quick Start
-
-### Local Development
+**Claude Code:**
 
 ```bash
-# Clone the repository
-git clone https://github.com/mohidbt/apic.git
-cd apic
-
-# Terminal 1 - Start Backend
-cd backend
-pip install -r requirements.txt
-python main.py
-
-# Terminal 2 - Start Frontend
-cd frontend
-npm install
-npm run dev
+claude mcp add --transport http APIIngest https://api-ingest.com/mcp
 ```
-
-Then open http://localhost:3000 in your browser!
-
-### Using the Converter
-
-1. **Web Interface** (Recommended)
-   - Open http://localhost:3000
-   - Drag and drop your API spec file (YAML, JSON, RAML, WSDL, GraphQL, or API Blueprint)
-   - Click "Convert to Markdown"
-   - Browse chunks, tool schemas, and full markdown in the spec detail modal
-
-2. **Command Line**
-   ```bash
-   cd backend
-
-   # Monolithic markdown (default)
-   python transformation.py spec.yaml
-
-   # Progressive-disclosure chunks as JSON
-   python transformation.py spec.yaml --chunked
-
-   # JSON Schema tool definitions for function-calling
-   python transformation.py spec.yaml --tools
-   ```
-
-3. **API Endpoints**
-   ```bash
-   # Convert and download markdown
-   curl -X POST http://localhost:8000/api/convert \
-     -F "file=@openapi-spec.yaml"
-
-   # Get chunked output for a stored spec
-   curl http://localhost:8000/api/specs/1/chunks
-
-   # Get tool schemas for a stored spec
-   curl http://localhost:8000/api/specs/1/tools
-   ```
-
-## 📁 Project Structure
-
-```
-├── backend/                    # FastAPI + MCP server
-│   ├── main.py                # API server (convert, specs CRUD, chunks, tools)
-│   ├── transformation.py      # Core OpenAPI → Markdown/Chunks/Tools converter
-│   ├── mcp_server.py          # MCP server exposing specs as resources + tools
-│   ├── models/                # SQLAlchemy models (ApiSpec, database setup)
-│   ├── crud/                  # Database query helpers
-│   ├── schemas/               # Pydantic response schemas
-│   ├── tests/                 # pytest suite (transformation, behavioral, robustness)
-│   ├── scripts/               # Import utilities
-│   └── requirements.txt
-├── frontend/                   # Next.js web application
-│   ├── src/
-│   │   ├── app/               # App router pages (marketplace, spec detail)
-│   │   ├── components/        # UI components (spec-detail-modal, etc.)
-│   │   ├── lib/               # API client (fetchSpecChunks, fetchSpecTools)
-│   │   └── types/             # TypeScript types (ChunkedSpec, ToolSchema)
-│   └── package.json
-├── examples/                   # Example OpenAPI specifications
-├── docs/                       # Setup, deployment, and reference guides
-└── README.md
-```
-
-## 📖 Output Format
-
-The generated markdown follows a strict, LLM-optimized structure:
-
-### Header Section
-```markdown
-# API Title
-**Version:** 1.0.0
-
-Brief description...
-
-## Base URLs
-  - https://api.example.com — Production
-  - https://sandbox.api.example.com — Sandbox
-
-## Authentication
-  - bearerAuth: HTTP BEARER
-  - apiKey: API Key (header: X-API-Key)
-```
-
-### Endpoint Blocks
-
-Each endpoint uses strict delimiters (inspired by Gitingest) and is fully self-contained:
-
-```
-================================================================================
-ENDPOINT: [GET] /users/{id}
-OPERATION_ID: getUserById
-BASE_URL: https://api.example.com
-TAGS: Users
-SUMMARY: Get a user by ID
-DESCRIPTION: Retrieves detailed user information...
-AUTH: BEARER token
-
-REQUEST
-  Path params:
-  - id (string (uuid), required)
-  Query params:
-  - verbose (boolean, optional)
-  Body:
-  none
-
-RESPONSES
-  - 200 (application/json): Success
-    - id: string (uuid, required)
-    - name: string (required)
-    - email: string (email, required)
-  - 404: User not found
-
-EXAMPLE (curl)
-curl -X GET \
-  "https://api.example.com/users/123?verbose=true" \
-  -H "Authorization: Bearer $TOKEN"
-================================================================================
-```
-
-`OPERATION_ID` is the stable key used for chunked output, MCP resource URIs, and tool schema names. `BASE_URL` is repeated per block so each chunk stands alone without referencing the header.
-
-## 🎯 Why This Format?
-
-### LLM Benefits
-
-1. **Strict Delimiters** — `=` bars prevent AI from confusing endpoint boundaries
-2. **Self-contained blocks** — Each endpoint includes its own base URL and auth, so a single retrieved chunk has everything needed to construct a request
-3. **Stable IDs** — `OPERATION_ID` provides a deterministic key for lookup, tool schemas, and MCP URIs
-4. **Dereferenced Schemas** — No need to chase `$ref` pointers during code generation
-5. **Progressive Disclosure** — Chunked output lets agents fetch manifest first, then only the endpoints they need (avoids "lost in the middle")
-6. **Tool Schema Parity** — `generate_tool_schemas()` produces JSON Schema definitions that match the docs 1:1, so docs and callable tools stay isomorphic
-7. **Token-Optimized** — Endpoint blocks target 2-4K tokens; agents never need to ingest the whole spec
-
-### Inspired by Gitingest
-
-This format borrows from [Gitingest](https://gitingest.com/)'s approach:
-- Three-section structure (header, TOC, content)
-- Repeated delimiters between entries
-- Stable, deterministic ordering
-- Noise filtering for clarity
-
-## 🔌 MCP Server
-
-The MCP server (`backend/mcp_server.py`) supports two workflows — **local conversion** and **marketplace search** — with smart context loading so agents only pull what they need.
-
-### Tools
-
-| Tool | Description |
-|------|-------------|
-| `convert_spec(content, format)` | Convert a local API spec into a smart-loading payload (conversion_id, token_count, full_markdown, manifest, chunks_available) |
-| `search_specs(query, tag)` | Search marketplace specs by name/provider or tag |
-| `load_spec(spec_id)` | Load a marketplace spec into the same smart-loading payload |
-| `get_chunk(source_id, source_type, chunk_type, chunk_key)` | Fetch a single chunk (endpoint, tag, or schema) plus manifest — works for both local and marketplace sources |
-| `convert_spec_to_tools(content, format)` | Convert a raw spec into JSON Schema tool definitions for function-calling |
-
-### Agent workflow
-
-1. **Get the spec** — either `convert_spec` (local file) or `search_specs` → `load_spec` (marketplace)
-2. **Check `token_count`** — if below threshold (default 4000), use `full_markdown` directly
-3. **If large** — read `manifest` + `chunks_available` index, then call `get_chunk` for only the endpoints you need
-
-Both `convert_spec` and `load_spec` cache the converted result server-side and return a `source_id` (called `conversion_id` for local specs, `spec_id` for marketplace). Use this ID with `get_chunk` to fetch individual endpoints, tags, or schemas on demand — without re-sending the spec or loading the full markdown into context.
-
-```
-convert_spec(raw YAML/JSON)          search_specs("stripe") → load_spec(id)
-        │                                        │
-        ▼                                        ▼
-  conversion_id + manifest               spec_id + manifest
-  + chunks_available                     + chunks_available
-  + full_markdown (if small)             + full_markdown (if small)
-        │                                        │
-        └──────────┬─────────────────────────────┘
-                   ▼
-    get_chunk(source_id, source_type, chunk_type, chunk_key)
-                   │
-                   ▼
-      Single endpoint/tag/schema block + manifest
-```
-
-### Resources
-
-Legacy resource URIs still work for clients that prefer the resource pattern:
-
-| URI | Description |
-|-----|-------------|
-| `docs://specs` | List all stored specs |
-| `docs://specs/{id}/manifest` | Manifest (title, auth, endpoint index) |
-| `docs://specs/{id}/tags/{tag}` | Per-tag endpoint listing |
-| `docs://specs/{id}/endpoints/{operationId}` | Single self-contained endpoint block |
-| `docs://specs/{id}/schemas/{name}` | Single component schema |
-| `docs://specs/{id}/tools` | JSON tool definitions for all endpoints |
-
-### Running the MCP server
-
-```bash
-cd backend
-
-# HTTP transport (production)
-MCP_API_TOKEN=your-secret-token python mcp_server.py
-
-# stdio transport (local dev)
-MCP_TRANSPORT=stdio python mcp_server.py
-```
-
-| Env Var | Default | Description |
-|---------|---------|-------------|
-| `MCP_TRANSPORT` | `streamable-http` | `streamable-http` or `stdio` |
-| `MCP_HOST` | `0.0.0.0` | Bind address (HTTP only) |
-| `MCP_PORT` | `8080` | Listen port (HTTP only) |
-| `MCP_API_TOKEN` | — | Admin fallback token; user tokens are validated against the DB |
-| `MCP_TOKEN_THRESHOLD` | `4000` | Recommended token threshold returned in payloads (agent decides) |
-
-### Connecting clients
 
 **Cursor** — add to `.cursor/mcp.json`:
 
@@ -287,145 +38,96 @@ MCP_TRANSPORT=stdio python mcp_server.py
 {
   "mcpServers": {
     "APIIngest": {
-      "url": "https://your-deployed-host:8080/",
-      "headers": {
-        "Authorization": "Bearer your-token"
-      }
+      "url": "https://api-ingest.com/mcp"
     }
   }
 }
 ```
 
-**Claude Code:**
+---
 
-```bash
-claude mcp add --transport http APIIngest https://your-deployed-host:8080/ \
-  --header "Authorization: Bearer your-token"
-```
+### What your agent can do
 
-## 🌐 Deployment
+| Tool | What it does |
+| --- | --- |
+| `convert_spec` | Convert a raw spec (OpenAPI, RAML, GraphQL, etc.) into chunked, LLM-optimized markdown |
+| `search_specs` | Search the marketplace for public API specs by name or tag |
+| `load_spec` | Load a marketplace spec into the same smart-loading payload |
+| `get_chunk` | Fetch a single endpoint, tag, or schema — self-contained, no full spec needed |
 
-### Deploy to Koyeb
+**How agents use it:**
 
-**Two deployment options:**
+1. `convert_spec` (local file) or `search_specs` → `load_spec` (marketplace)
+2. Check `token_count` — if small, use `full_markdown` directly
+3. If large — read the manifest, then `get_chunk` for only the endpoints needed
 
-#### Option 1: Single Service (Recommended for Simple Deployments)
-Deploy backend + frontend together in one container.
-
-See **[KOYEB_SINGLE_SERVICE.md](KOYEB_SINGLE_SERVICE.md)** for detailed instructions.
-
-**Quick steps:**
-1. Use root-level `Dockerfile`
-2. Set environment variables (PORT, ALLOWED_ORIGINS, etc.)
-3. Deploy as one service
-4. Both services run together via supervisord
-
-**Environment Variables:**
-```bash
-PORT=8000
-ALLOWED_ORIGINS=https://{{ KOYEB_PUBLIC_DOMAIN }}/
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NODE_ENV=production
-```
-
-#### Option 2: Two Separate Services (Recommended for Production)
-Deploy backend and frontend as independent services.
-
-See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for complete instructions.
-
-**Quick Overview:**
-1. Deploy backend service (FastAPI) from `backend/` directory
-2. Deploy frontend service (Next.js) from `frontend/` directory
-3. Set environment variables for both services
-4. Update CORS settings with deployed URLs
-
-## 🛠️ Technology Stack
-
-### Backend
-- **FastAPI** — Modern Python web framework
-- **uvicorn** — ASGI server
-- **PyYAML** — YAML parsing
-- **MCP Python SDK** — Model Context Protocol server
-- **tiktoken** — Token counting
-- **Python 3.10+**
-
-### Frontend
-- **Next.js 15** — React framework
-- **TypeScript** — Type safety
-- **Tailwind CSS** — Styling
-- **shadcn/ui** — UI components
-- **Sonner** — Toast notifications
-
-## 📚 Documentation
-
-- **[SETUP.md](docs/SETUP.md)** — Detailed installation and configuration
-- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** — Koyeb deployment guide
-- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** — Command reference
-- **[Backend README](backend/README.md)** — API documentation
-- **[Examples](examples/README.md)** — Example specifications
-
-## 🧪 Testing
-
-```bash
-cd backend
-
-# Run the full test suite
-pytest tests/ -v
-
-# Run specific test tiers
-pytest tests/test_transformation.py -v    # Core converter logic
-pytest tests/test_p1_behavioral.py -v     # Behavioral edge cases (allOf, security overrides, etc.)
-pytest tests/test_p2_robustness.py -v     # Robustness (empty specs, perf guards, special chars)
-```
-
-The test suite covers monolithic, chunked, and tool-schema outputs, verifying cross-format consistency (same spec produces matching operationIds and endpoints across all three modes).
-
-To try the converter manually:
-
-```bash
-python transformation.py ../examples/APIs.guru-swagger.yaml
-```
-
-## 🤝 Contributing
-
-Contributions welcome! This project prioritizes LLM readability over human aesthetics.
-
-**Key principles:**
-1. **Strict structure** — Consistent delimiters and ordering
-2. **Inline critical info** — Auth, types, examples per endpoint
-3. **Token efficiency** — Truncate where necessary
-4. **Deterministic output** — Same input = same output
-
-## 📝 License
-
-MIT — Feel free to use, modify, and distribute.
-
-## 🔗 Related Projects
-
-- [Gitingest](https://gitingest.com/) — LLM-optimized code repository digests
-
-## 💡 Use Cases
-
-- **AI Coding Assistants** — Feed API docs to Claude, GPT, etc.
-- **MCP-connected agents** — Agents discover and fetch only the endpoints they need via the MCP server
-- **Function-calling / tool use** — Generate JSON Schema tool definitions directly from any OpenAPI spec
-- **RAG Systems** — Token-optimized chunks with natural split boundaries for retrieval
-- **Developer Onboarding** — Clear, structured API references
-
-## 🐛 Issues & Support
-
-Found a bug or have a question?
-- Open an issue on GitHub
-- Check existing [documentation](docs/)
-- Try with [example files](examples/)
-
-## 🎉 Acknowledgments
-
-Built with inspiration from:
-- Gitingest's LLM-friendly formatting approach
-- OpenAPI Specification community
-- Context7 package versioning service for LLMs
+Each chunk includes its own base URL, auth, params, schemas, and a curl example — so it stands alone without the rest of the spec.
 
 ---
 
-**Made with ❤️ for developers working with LLMs**
+### Web UI
+
+Use the hosted web tool at **[api-ingest.com](https://api-ingest.com)** to convert specs interactively:
+
+1. Drop an API spec file (YAML, JSON, RAML, WSDL, GraphQL, or API Blueprint)
+2. Browse chunks, tool schemas, and full markdown in the explorer
+3. Copy what you need
+
+---
+
+### Output format
+
+The converter produces strict, deterministic markdown with self-contained endpoint blocks:
+
+```
+================================================================================
+ENDPOINT: [GET] /users/{id}
+OPERATION_ID: getUserById
+BASE_URL: https://api.example.com
+TAGS: Users
+AUTH: BEARER token
+
+REQUEST
+  Path params:
+  - id (string (uuid), required)
+
+RESPONSES
+  - 200 (application/json): Success
+    - id: string (uuid, required)
+    - name: string (required)
+  - 404: User not found
+
+EXAMPLE (curl)
+curl -X GET "https://api.example.com/users/123" \
+  -H "Authorization: Bearer $TOKEN"
+================================================================================
+```
+
+`OPERATION_ID` is the stable key for chunk lookups. `BASE_URL` is repeated per block so each chunk is fully self-contained. `====` delimiters prevent boundary confusion during retrieval.
+
+---
+
+### Why this format?
+
+- **Self-contained blocks** — each chunk has everything needed to construct a request
+- **No `$ref` chasing** — schemas are dereferenced inline
+- **Stable IDs** — deterministic `operationId` keys for lookup and tool schemas
+- **Token-optimized** — blocks target 2-4K tokens; agents never ingest the whole spec
+- **Progressive disclosure** — manifest first, then fetch only what's needed
+
+Inspired by [Gitingest](https://gitingest.com/)'s LLM-efficient formatting.
+
+---
+
+### Contributing
+
+Contributions welcome. 
+
+```bash
+git clone https://github.com/mohidbt/apic.git
+cd apic/backend
+pip install -r requirements.txt
+pytest tests/ -v
+```
+
+[MIT License](LICENSE)
