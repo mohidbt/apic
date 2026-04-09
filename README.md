@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/header.jpg" alt="API Ingest" width="600" />
-</p>
-
 # API Ingest - Let Agents work with boring APIs 
 
 **Handy tool** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown optimized for codegen agents. 
@@ -25,6 +21,11 @@ API endpoint hallucination is one of the most common failure modes when building
 Available as MCP server, web UI, or CLI.
 
 > *YES! This tool should die the day every API provider outside of big tech offers LLM-friendly docs, ([e.g. via this](https://gitbook.com/docs/publishing-documentation/mcp-servers-for-published-docs)). But let's be honest — that's gonna take a while. Until then, happy ingesting 💉.*
+
+
+<p align="center">
+  <img src="assets/header.jpg" alt="API Ingest" width="600" />
+</p>
 
 ---
 
