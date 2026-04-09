@@ -1,4 +1,8 @@
-# API Ingest - Let LLMs work with APIs 
+<p align="center">
+  <img src="assets/header.jpg" alt="API Ingest" width="600" />
+</p>
+
+# API Ingest - Let Agents work with boring APIs 
 
 **Handy tool** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown optimized for codegen agents. 
 
