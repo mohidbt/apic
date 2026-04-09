@@ -37,10 +37,11 @@ Without `$ref` mayhem, no "lost in the middle", no hallucination loops. Availabl
 - **Type normalization** — Clean type display (`string (uuid)`, `array<User>`, etc.)
 - **Token-aware** — Endpoint blocks target 2-4K tokens
 
-### MCP Server (in work 🛠️)
-- **Progressive disclosure** — Manifest, tags, endpoints, and schemas exposed as individually addressable MCP resources
-- **On-the-fly conversion** — `convert_spec` and `convert_spec_to_tools` MCP tools for specs not stored in the DB
-- **Content-hash caching** — Avoids re-converting the same spec on repeated resource requests
+### MCP Server
+- **Smart context loading** — Token-aware payloads let agents decide: use full markdown for small specs, or lazy-load individual chunks for large ones
+- **Two workflows** — `convert_spec` for local files, `search_specs` + `load_spec` for marketplace specs
+- **Chunk-level fetching** — `get_chunk` returns a single endpoint/tag/schema plus manifest, so each chunk is self-contained
+- **Content-hash caching** — Avoids re-converting the same spec on repeated requests
 
 ### Web UI
 - **Tabbed spec explorer** — Overview, Chunks, Tool Schemas, and Full Markdown tabs
