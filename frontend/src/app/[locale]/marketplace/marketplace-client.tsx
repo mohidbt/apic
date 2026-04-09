@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { AppHeader } from '@/components/app-header'
 import { SpecDetailModal } from '@/components/spec-detail-modal'
