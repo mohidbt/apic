@@ -1346,8 +1346,6 @@ _MCP_PROXY_ALLOWED_REQUEST_HEADERS = {
     "authorization",
     "content-type",
     "accept",
-    "last-event-id",
-    "mcp-session-id",
     "user-agent",
 }
 _MCP_PROXY_BLOCKED_RESPONSE_HEADERS = {
@@ -1361,6 +1359,14 @@ _MCP_PROXY_BLOCKED_RESPONSE_HEADERS = {
     "transfer-encoding",
     "upgrade",
 }
+
+
+def _is_allowed_mcp_request_header(header_name: str) -> bool:
+    lowered = header_name.lower()
+    if lowered in _MCP_PROXY_ALLOWED_REQUEST_HEADERS:
+        return True
+    # Forward all MCP protocol headers so session/negotiation headers are preserved.
+    return lowered.startswith("mcp-")
 
 
 @app.api_route("/mcp", methods=["GET", "POST", "OPTIONS"])
@@ -1380,7 +1386,7 @@ async def proxy_mcp(request: Request, mcp_path: str = ""):
     proxy_headers = {
         name: value
         for name, value in request.headers.items()
-        if name.lower() in _MCP_PROXY_ALLOWED_REQUEST_HEADERS
+        if _is_allowed_mcp_request_header(name)
     }
     body = await request.body()
 

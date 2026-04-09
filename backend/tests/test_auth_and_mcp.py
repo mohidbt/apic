@@ -454,6 +454,8 @@ class TestMCPResourcesAndTools:
         parsed = _json.loads(result)
         assert isinstance(parsed, list)
         assert any(s["name"] == "TestAPI" for s in parsed)
+        test_api = next(s for s in parsed if s["name"] == "TestAPI")
+        assert test_api["id"] == test_api["spec_id"]
 
     def test_get_manifest_resource(self):
         from mcp_server import get_manifest
@@ -489,6 +491,9 @@ class TestMCPResourcesAndTools:
         assert "manifest" in parsed
         assert isinstance(parsed.get("chunks_available"), list)
         assert len(parsed["chunks_available"]) >= 1
+        first_chunk = parsed["chunks_available"][0]
+        assert first_chunk["type"] == first_chunk["chunk_type"]
+        assert first_chunk["key"] == first_chunk["chunk_key"]
 
     def test_search_specs_tool(self):
         import json as _json
@@ -507,6 +512,8 @@ class TestMCPResourcesAndTools:
 
         by_query = _json.loads(search_specs(query="TestAPI"))
         assert any(item["name"] == "TestAPI" for item in by_query)
+        queried = next(item for item in by_query if item["name"] == "TestAPI")
+        assert queried["id"] == queried["spec_id"]
         by_tag = _json.loads(search_specs(tag="users"))
         assert any(item["spec_id"] == sid for item in by_tag)
 
@@ -521,6 +528,9 @@ class TestMCPResourcesAndTools:
         assert isinstance(parsed.get("full_markdown"), str)
         assert isinstance(parsed.get("chunks_available"), list)
         assert "manifest" in parsed
+        first_chunk = parsed["chunks_available"][0]
+        assert first_chunk["type"] == first_chunk["chunk_type"]
+        assert first_chunk["key"] == first_chunk["chunk_key"]
 
     def test_get_chunk_tool(self):
         import json as _json
@@ -590,3 +600,54 @@ class TestDatabaseMigration:
         table_names = inspector.get_table_names()
         for expected in ("users", "api_tokens", "api_specs", "tags"):
             assert expected in table_names, f"Missing table: {expected}"
+
+
+class TestMCPProxyHeaders:
+    def test_proxy_forwards_mcp_headers_and_filters_unknown(self, monkeypatch):
+        import main
+
+        captured: dict[str, object] = {}
+
+        class _DummyResponse:
+            def __init__(self):
+                self.status_code = 200
+                self.content = b'{"ok":true}'
+                self.headers = {"content-type": "application/json", "x-upstream": "1"}
+
+        class _DummyAsyncClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def request(self, method, url, headers=None, content=None):
+                captured["method"] = method
+                captured["url"] = url
+                captured["headers"] = headers or {}
+                captured["content"] = content
+                return _DummyResponse()
+
+        monkeypatch.setattr(main.httpx, "AsyncClient", _DummyAsyncClient)
+
+        r = client.get(
+            "/mcp",
+            headers={
+                "Authorization": "Bearer test-token",
+                "Accept": "application/json",
+                "MCP-Session-Id": "session-123",
+                "MCP-Custom": "custom-value",
+                "X-Should-Not-Forward": "nope",
+            },
+        )
+
+        assert r.status_code == 200
+        forwarded = {k.lower(): v for k, v in captured["headers"].items()}
+        assert forwarded["authorization"] == "Bearer test-token"
+        assert forwarded["accept"] == "application/json"
+        assert forwarded["mcp-session-id"] == "session-123"
+        assert forwarded["mcp-custom"] == "custom-value"
+        assert "x-should-not-forward" not in forwarded

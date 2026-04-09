@@ -177,7 +177,9 @@ def _build_chunks_index(chunked: dict[str, Any]) -> list[dict[str, str]]:
         chunks.append(
             {
                 "type": "tag",
+                "chunk_type": "tag",
                 "key": tag_name,
+                "chunk_key": tag_name,
                 "summary": f"{endpoint_count} endpoints",
             }
         )
@@ -186,7 +188,9 @@ def _build_chunks_index(chunked: dict[str, Any]) -> list[dict[str, str]]:
         chunks.append(
             {
                 "type": "endpoint",
+                "chunk_type": "endpoint",
                 "key": op_id,
+                "chunk_key": op_id,
                 "summary": _extract_endpoint_summary(endpoint_block),
             }
         )
@@ -195,7 +199,9 @@ def _build_chunks_index(chunked: dict[str, Any]) -> list[dict[str, str]]:
         chunks.append(
             {
                 "type": "schema",
+                "chunk_type": "schema",
                 "key": schema_name,
+                "chunk_key": schema_name,
                 "summary": _extract_schema_summary(schema_block),
             }
         )
@@ -243,6 +249,7 @@ def _get_chunk_content(chunked: dict[str, Any], chunk_type: str, chunk_key: str)
 
 def _marketplace_row_to_summary(spec: ApiSpec) -> dict[str, Any]:
     return {
+        "id": spec.id,
         "spec_id": spec.id,
         "name": spec.name,
         "version": spec.version,
@@ -266,6 +273,7 @@ def list_specs() -> str:
             rows.append(
                 {
                     "id": s.id,
+                    "spec_id": s.id,
                     "name": s.name,
                     "version": s.version,
                     "token_count": s.token_count,
