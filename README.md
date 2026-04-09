@@ -29,7 +29,8 @@ Available as MCP server, web UI, or CLI.
 **Claude Code:**
 
 ```bash
-claude mcp add --transport http APIIngest https://api-ingest.com/mcp
+claude mcp add --transport http APIIngest https://api-ingest.com/mcp \
+  --header "Authorization: Bearer YOUR_TOKEN"
 ```
 
 **Cursor** — add to `.cursor/mcp.json`:
@@ -38,11 +39,15 @@ claude mcp add --transport http APIIngest https://api-ingest.com/mcp
 {
   "mcpServers": {
     "APIIngest": {
-      "url": "https://api-ingest.com/mcp"
+      "url": "https://api-ingest.com/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
     }
   }
 }
 ```
+Get the token from api-ingest.com
 
 ---
 
