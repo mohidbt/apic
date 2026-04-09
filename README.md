@@ -209,47 +209,56 @@ This format borrows from [Gitingest](https://gitingest.com/)'s approach:
 
 ## 🔌 MCP Server
 
-The MCP server (`backend/mcp_server.py`) exposes stored API specs as discoverable resources and tools, implementing the progressive-disclosure pattern so agents spend minimal tokens.
-
-### Resources
-
-| URI | Description |
-|-----|-------------|
-| `docs://specs` | List all stored specs (id, name, version, token count) |
-| `docs://specs/{id}/manifest` | Title, version, base URLs, auth, tag-grouped endpoint index |
-| `docs://specs/{id}/tags/{tag}` | Per-tag endpoint listing with operationIds and summaries |
-| `docs://specs/{id}/endpoints/{operationId}` | Full self-contained endpoint block |
-| `docs://specs/{id}/schemas/{name}` | Single component schema definition |
-| `docs://specs/{id}/tools` | JSON tool definitions for all endpoints |
+The MCP server (`backend/mcp_server.py`) supports two workflows — **local conversion** and **marketplace search** — with smart context loading so agents only pull what they need.
 
 ### Tools
 
 | Tool | Description |
 |------|-------------|
-| `convert_spec` | Convert raw OpenAPI YAML/JSON to chunked markdown on the fly |
-| `convert_spec_to_tools` | Convert raw OpenAPI spec to JSON Schema tool definitions |
+| `convert_spec(content, format)` | Convert a local API spec into a smart-loading payload (conversion_id, token_count, full_markdown, manifest, chunks_available) |
+| `search_specs(query, tag)` | Search marketplace specs by name/provider or tag |
+| `load_spec(spec_id)` | Load a marketplace spec into the same smart-loading payload |
+| `get_chunk(source_id, source_type, chunk_type, chunk_key)` | Fetch a single chunk (endpoint, tag, or schema) plus manifest — works for both local and marketplace sources |
+| `convert_spec_to_tools(content, format)` | Convert a raw spec into JSON Schema tool definitions for function-calling |
+
+### Agent workflow
+
+1. **Get the spec** — either `convert_spec` (local file) or `search_specs` → `load_spec` (marketplace)
+2. **Check `token_count`** — if below threshold (default 4000), use `full_markdown` directly
+3. **If large** — read `manifest` + `chunks_available` index, then call `get_chunk` for only the endpoints you need
+
+### Resources
+
+Legacy resource URIs still work for clients that prefer the resource pattern:
+
+| URI | Description |
+|-----|-------------|
+| `docs://specs` | List all stored specs |
+| `docs://specs/{id}/manifest` | Manifest (title, auth, endpoint index) |
+| `docs://specs/{id}/tags/{tag}` | Per-tag endpoint listing |
+| `docs://specs/{id}/endpoints/{operationId}` | Single self-contained endpoint block |
+| `docs://specs/{id}/schemas/{name}` | Single component schema |
+| `docs://specs/{id}/tools` | JSON tool definitions for all endpoints |
 
 ### Running the MCP server
-
-The MCP server runs as a remote HTTP service with bearer-token authentication.
 
 ```bash
 cd backend
 
-# HTTP transport (production / remote clients)
+# HTTP transport (production)
 MCP_API_TOKEN=your-secret-token python mcp_server.py
-# Listens on 0.0.0.0:8080 by default — configurable via MCP_HOST / MCP_PORT
 
-# stdio transport (local development / debugging)
+# stdio transport (local dev)
 MCP_TRANSPORT=stdio python mcp_server.py
 ```
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
 | `MCP_TRANSPORT` | `streamable-http` | `streamable-http` or `stdio` |
-| `MCP_HOST` | `0.0.0.0` | Bind address for HTTP transport |
-| `MCP_PORT` | `8080` | Listen port for HTTP transport |
-| `MCP_API_TOKEN` | *(required for HTTP)* | Bearer token clients must send |
+| `MCP_HOST` | `0.0.0.0` | Bind address (HTTP only) |
+| `MCP_PORT` | `8080` | Listen port (HTTP only) |
+| `MCP_API_TOKEN` | — | Admin fallback token; user tokens are validated against the DB |
+| `MCP_TOKEN_THRESHOLD` | `4000` | Recommended token threshold returned in payloads (agent decides) |
 
 ### Connecting clients
 
@@ -261,21 +270,19 @@ MCP_TRANSPORT=stdio python mcp_server.py
     "APIIngest": {
       "url": "https://your-deployed-host:8080/",
       "headers": {
-        "Authorization": "Bearer your-secret-token"
+        "Authorization": "Bearer your-token"
       }
     }
   }
 }
 ```
 
-**Claude Code** — run:
+**Claude Code:**
 
 ```bash
 claude mcp add --transport http APIIngest https://your-deployed-host:8080/ \
-  --header "Authorization: Bearer your-secret-token"
+  --header "Authorization: Bearer your-token"
 ```
-
-An agent workflow typically looks like: fetch manifest (small) -> pick relevant endpoint by operationId -> fetch only that endpoint block. This avoids dumping the entire spec into context.
 
 ## 🌐 Deployment
 
