@@ -227,6 +227,24 @@ The MCP server (`backend/mcp_server.py`) supports two workflows — **local conv
 2. **Check `token_count`** — if below threshold (default 4000), use `full_markdown` directly
 3. **If large** — read `manifest` + `chunks_available` index, then call `get_chunk` for only the endpoints you need
 
+Both `convert_spec` and `load_spec` cache the converted result server-side and return a `source_id` (called `conversion_id` for local specs, `spec_id` for marketplace). Use this ID with `get_chunk` to fetch individual endpoints, tags, or schemas on demand — without re-sending the spec or loading the full markdown into context.
+
+```
+convert_spec(raw YAML/JSON)          search_specs("stripe") → load_spec(id)
+        │                                        │
+        ▼                                        ▼
+  conversion_id + manifest               spec_id + manifest
+  + chunks_available                     + chunks_available
+  + full_markdown (if small)             + full_markdown (if small)
+        │                                        │
+        └──────────┬─────────────────────────────┘
+                   ▼
+    get_chunk(source_id, source_type, chunk_type, chunk_key)
+                   │
+                   ▼
+      Single endpoint/tag/schema block + manifest
+```
+
 ### Resources
 
 Legacy resource URIs still work for clients that prefer the resource pattern:
