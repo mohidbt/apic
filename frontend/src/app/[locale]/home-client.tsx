@@ -344,14 +344,14 @@ export default function HomeClient({ starCount }: HomeClientProps) {
             <h1 className="mb-4 text-6xl font-bold tracking-tight text-foreground md:text-7xl">
               API Docs
               <br />
-              as LLM Skills
+              optimized for LLMs
             </h1>
             <p className="mx-auto mb-2 max-w-2xl text-lg text-muted-foreground">
-            Let LLMs finally understand API Docs.
+            Let LLMs finally understand API Docs, deterministically, and token efficient.
             </p>
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-              Just insert your API specs (OpenAPI, WSDL, GraphQL, or API Blueprint) and get LLM-Ready Markdown back.
-              Or use the marketplace download ready-made API-Skills.
+              Insert your API specs (OpenAPI, WSDL, GraphQL, or API Blueprint) and get LLM-Ready Markdown back.
+              Or use the marketplace to download ready-made specs.
             </p>
           </div>
 
@@ -434,10 +434,11 @@ export default function HomeClient({ starCount }: HomeClientProps) {
                   ✨ Why LLMs not only love, but actually need this ✨ 
                 </p>
                 <ul className="space-y-1 text-xs text-muted-foreground">
-                  <li>Dereferences $ref schemas</li>
-                  <li>Generates runnable curl examples</li>
-                  <li>Organized by tags and endpoints</li>
-                  <li>Includes authentication details</li>
+                  <li><strong>Deterministic</strong> — no hallucination loops</li>
+                  <li><strong>Token efficient</strong> — chunked, loads only needed endpoints</li>
+                  <li><strong>Self-contained</strong> — auth, params, schemas & curl per endpoint</li>
+                  <li><strong>$refs resolved</strong> — no broken references for the LLM to chase</li>
+                  <li><strong>MCP</strong> — plug into any agent with one config line</li>
                 </ul>
               </div>
             </div>
