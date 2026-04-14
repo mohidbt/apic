@@ -31,8 +31,7 @@ export function ContactForm() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    toast({
-      title: "Message sent!",
+    toast.success("Message sent!", {
       description: "Thank you for your message. We'll get back to you soon.",
     })
     reset()

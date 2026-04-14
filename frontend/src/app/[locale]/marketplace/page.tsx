@@ -4,7 +4,12 @@ import { MarketplaceClient } from './marketplace-client'
 export default async function MarketplacePage() {
   // Fetch initial data on the server (including GitHub stats).
   // If the backend is temporarily unavailable, render a resilient empty state.
-  let specsData: Awaited<ReturnType<typeof fetchSpecs>> = { specs: [], total: 0 }
+  let specsData: Awaited<ReturnType<typeof fetchSpecs>> = {
+    specs: [],
+    total: 0,
+    page: 1,
+    page_size: 20,
+  }
   let githubStats: Awaited<ReturnType<typeof fetchGitHubStats>> = { stargazers_count: 0 }
 
   try {

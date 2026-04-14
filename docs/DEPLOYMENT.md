@@ -50,7 +50,8 @@ The application is deployed as a **single container** on Koyeb, with both servic
 2. **Port Exposure**: Only port 8000 (backend) is exposed publicly
 3. **Internal Communication**: Frontend SSR calls backend via `localhost:8000` (fast)
 4. **Client Communication**: Browser calls backend via public domain
-5. **Process Management**: Supervisord manages both processes
+5. **MCP Access**: MCP clients use `https://<domain>/mcp` via backend proxy
+6. **Process Management**: Supervisord manages all processes
 
 ## Deployment Steps
 
@@ -67,8 +68,8 @@ NODE_ENV=production
 PORT=8000
 
 # MCP Server (required for remote MCP clients)
-MCP_API_TOKEN=your-secret-token  # bearer token for MCP endpoint auth
-MCP_PORT=8080                     # MCP server listen port (default 8080)
+MCP_API_TOKEN=your-secret-token  # bearer token for /mcp endpoint auth
+MCP_PORT=8080                    # internal MCP process port (default 8080)
 
 # Optional (defaults provided)
 DATABASE_PATH=/app/backend/data/apiingest.db  # SQLite fallback if DATABASE_URL not set
@@ -324,19 +325,19 @@ Monitor in Koyeb dashboard:
 
 ## MCP Server
 
-The MCP server runs as a third process inside the container (managed by supervisord) on port 8080. It shares the same database as the backend and exposes stored API specs as MCP resources and tools.
+The MCP server runs as a third process inside the container (managed by supervisord) on port 8080. In normal deployments, clients connect through the backend proxy at `/mcp`, so you do not need to expose port 8080 publicly.
 
 ### Verifying MCP is running
 
 ```bash
-# Quick health check (should return 401 without token)
-curl -s -o /dev/null -w "%{http_code}" https://your-app.koyeb.app:8080/
+# Quick health check via proxy (should return 401 without token)
+curl -s -o /dev/null -w "%{http_code}" https://your-app.koyeb.app/mcp
 # Expected: 401
 
-# With valid token (should return 200 or a protocol response)
+# With valid token (should return 200 or protocol response)
 curl -s -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer your-secret-token" \
-  https://your-app.koyeb.app:8080/
+  https://your-app.koyeb.app/mcp
 ```
 
 ### Connecting Cursor
@@ -347,7 +348,7 @@ Add to your project or global `.cursor/mcp.json`:
 {
   "mcpServers": {
     "API-Ingest": {
-      "url": "https://your-app.koyeb.app:8080/",
+      "url": "https://your-app.koyeb.app/mcp",
       "headers": {
         "Authorization": "Bearer your-secret-token"
       }
@@ -359,13 +360,13 @@ Add to your project or global `.cursor/mcp.json`:
 ### Connecting Claude Code
 
 ```bash
-claude mcp add --transport http API-Ingest https://your-app.koyeb.app:8080/ \
+claude mcp add --transport http API-Ingest https://your-app.koyeb.app/mcp \
   --header "Authorization: Bearer your-secret-token"
 ```
 
 ### Port Exposure
 
-If deploying on Koyeb with a single container, you need to expose port 8080 in addition to 8000. Alternatively, you can use a reverse proxy rule to route `/mcp` traffic to the MCP process.
+For single-container deployments, keep only port 8000 public and use `/mcp` proxy routing. Expose port 8080 only if you explicitly want direct MCP access (advanced setup).
 
 ## Troubleshooting
 
@@ -659,14 +660,14 @@ User Request                        MCP Client (Cursor / Claude Code)
     ↓                                       ↓
 Koyeb Load Balancer (HTTPS)         Bearer Token Auth
     ↓                                       ↓
-Container (Port 8000)               Container (Port 8080)
+Container (Port 8000, / + /mcp)     Proxy path /mcp
     ↓                                       ↓
 ┌──────────────────────────────────────────────┐
 │              Supervisord                     │
 │  ┌──────────┐  ┌──────────┐  ┌────────────┐ │
 │  │ FastAPI  │←─┤ Next.js  │  │ MCP Server │ │
 │  │ :8000    │  │ :3000    │  │ :8080      │ │
-│  │ (public) │  │(internal)│  │ (public)   │ │
+│  │ (public) │  │(internal)│  │(internal)  │ │
 │  └────┬─────┘  └──────────┘  └─────┬──────┘ │
 └───────┼─────────────────────────────┼────────┘
         └──────────────┬──────────────┘
@@ -676,10 +677,10 @@ Container (Port 8000)               Container (Port 8080)
 
 **Key Points**:
 - Single container, three processes (backend, frontend, MCP server)
-- Port 8000 (backend) and port 8080 (MCP) exposed publicly
+- Port 8000 is publicly exposed; MCP clients use `/mcp` on the same domain
 - SSR uses localhost for fast internal API calls
 - Client uses public domain for API calls
-- MCP clients connect to port 8080 with bearer token auth
+- MCP process listens on internal port 8080 with bearer token auth
 - PostgreSQL for persistent storage
 
 ---
