@@ -39,13 +39,11 @@ yarn-error.log*
 Thumbs.db
 *.bak
 
-# Build outputs
-dist/
-build/
-
 # Test coverage
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
 
 # Generated markdown outputs (except documentation)
 *-converted.md
@@ -66,8 +64,6 @@ backend/data/
 
 # Archive (optional - remove this line if you want to commit archived files)
 .archive/
-.cursor/
-.vscode/
 
 # Keep specific documentation files
 !README.md

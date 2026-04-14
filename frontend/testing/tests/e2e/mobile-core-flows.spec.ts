@@ -41,7 +41,7 @@ test.describe("Mobile core flow UX", () => {
     await expect(page.getByRole("heading", { level: 1, name: /API Docs/i })).toBeVisible()
     await expect(page).toHaveScreenshot("mobile-home.png", {
       maxDiffPixelRatio: 0.02,
-      mask: [page.locator('a[href="https://github.com/mohidbt/apic"]')],
+      mask: [page.locator('a[href="https://github.com/mohidbt/api-ingest"]')],
     })
   })
 
@@ -72,7 +72,7 @@ test.describe("Mobile core flow UX", () => {
       maxDiffPixelRatio: 0.02,
       mask: [
         page.locator("tbody"),
-        page.locator('a[href="https://github.com/mohidbt/apic"]'),
+        page.locator('a[href="https://github.com/mohidbt/api-ingest"]'),
       ],
     })
   })
@@ -89,7 +89,7 @@ test.describe("Mobile core flow UX", () => {
     await expect(page.getByRole("heading", { name: "Sign in to manage API tokens" })).toBeVisible()
     await expect(page).toHaveScreenshot("mobile-tokens-auth.png", {
       maxDiffPixelRatio: 0.02,
-      mask: [page.locator('a[href="https://github.com/mohidbt/apic"]')],
+      mask: [page.locator('a[href="https://github.com/mohidbt/api-ingest"]')],
     })
   })
 })

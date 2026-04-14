@@ -69,7 +69,7 @@ export function AppHeader({ starCount }: AppHeaderProps) {
             <span className="hidden text-sm text-muted-foreground lg:inline">Specs Marketplace</span>
           </Link>
           <a
-            href="https://github.com/mohidbt/apic"
+            href="https://github.com/mohidbt/api-ingest"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub"

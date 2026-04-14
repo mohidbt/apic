@@ -20,6 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Point database to in-memory SQLite before any model imports
 os.environ.pop("DATABASE_URL", None)
 os.environ["DATABASE_PATH"] = ":memory:"
+os.environ["ADMIN_GITHUB_LOGINS"] = "admin-user"
+os.environ["ADMIN_EMAILS"] = "admin@example.com"
 
 import jwt as pyjwt
 import pytest
@@ -163,7 +165,7 @@ class TestAuthAPI:
 
     def test_auth_me_admin_by_login(self):
         db = _TestSession()
-        user = _make_user(db, github_id=7777, login="mohidbt")
+        user = _make_user(db, github_id=7777, login="admin-user")
         token = _mint_jwt(user.id)
         db.close()
         r = client.get("/api/auth/me", cookies={"session": token})
@@ -173,7 +175,7 @@ class TestAuthAPI:
     def test_auth_me_admin_by_email_claim(self):
         db = _TestSession()
         user = _make_user(db, github_id=7778, login="someuser")
-        token = _mint_jwt(user.id, gh_email="mohidfbutt@gmail.com")
+        token = _mint_jwt(user.id, gh_email="admin@example.com")
         db.close()
         r = client.get("/api/auth/me", cookies={"session": token})
         assert r.status_code == 200
@@ -336,7 +338,7 @@ class TestMarketplaceAdminDelete:
 
     def test_delete_spec_allowed_for_admin_login(self):
         db = _TestSession()
-        user = _make_user(db, github_id=2002, login="mohidbt")
+        user = _make_user(db, github_id=2002, login="admin-user")
         token = _mint_jwt(user.id)
         db.close()
         spec_id = self._seed_spec()
@@ -347,7 +349,7 @@ class TestMarketplaceAdminDelete:
     def test_delete_spec_allowed_for_admin_email(self):
         db = _TestSession()
         user = _make_user(db, github_id=2003, login="another-user")
-        token = _mint_jwt(user.id, gh_email="mohidfbutt@gmail.com")
+        token = _mint_jwt(user.id, gh_email="admin@example.com")
         db.close()
         spec_id = self._seed_spec()
         r = client.delete(f"/api/specs/{spec_id}", cookies={"session": token})

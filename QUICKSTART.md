@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get APIIngest running in 2 minutes!
+Get API Ingest running in 2 minutes.
 
 ## 🚀 Super Quick Start
 
@@ -81,7 +81,7 @@ python transformation.py ../examples/APIs.guru-swagger.yaml
 ### Using the API
 
 ```bash
-curl -X POST http://localhost:8000/convert \
+curl -X POST http://localhost:8000/api/convert \
   -F "file=@examples/APIs.guru-swagger.yaml" \
   -o output.md
 ```

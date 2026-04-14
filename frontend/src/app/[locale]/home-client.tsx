@@ -69,7 +69,6 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       const statusBody = await statusResponse.json()
       const status = statusBody?.status
       const stage = statusBody?.stage
-      console.info('convert job status', { requestId, jobId, status, stage, timings: statusBody?.timings })
 
       if (status === 'completed') {
         return statusBody
@@ -163,7 +162,6 @@ export default function HomeClient({ starCount }: HomeClientProps) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
 
     const requestId = createRequestId()
-    const startedAt = performance.now()
 
     try {
       const response = await fetchWithTimeout(`${apiUrl}/api/convert?save_to_db=false`, {
@@ -223,17 +221,6 @@ export default function HomeClient({ starCount }: HomeClientProps) {
       const blob = await downloadResponse.blob()
       const tokenCountHeader = downloadResponse.headers.get('X-Token-Count')
       const tokenCount = tokenCountHeader ? Number(tokenCountHeader) : null
-      const durationHeader = downloadResponse.headers.get('X-Request-Duration-Ms')
-      const stageTimings = downloadResponse.headers.get('X-Stage-Timings')
-      const clientDurationMs = Math.round(performance.now() - startedAt)
-
-      console.info('convert timings', {
-        requestId,
-        jobId,
-        clientDurationMs,
-        serverDurationMs: durationHeader ? Number(durationHeader) : null,
-        stageTimings,
-      })
 
       setConvertedBlob(blob)
       setConvertedFilename(filename)
@@ -270,8 +257,6 @@ export default function HomeClient({ starCount }: HomeClientProps) {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
     const requestId = createRequestId()
-    const startedAt = performance.now()
-
     setIsSharing(true)
     try {
       const markdownContent = await convertedBlob.text()
@@ -306,12 +291,6 @@ export default function HomeClient({ starCount }: HomeClientProps) {
 
       const body = await response.json()
       const saveStatus = body?.status
-      const clientDurationMs = Math.round(performance.now() - startedAt)
-      console.info('share timings', {
-        requestId,
-        clientDurationMs,
-        serverDurationMs: body?.duration_ms ?? null,
-      })
       triggerDownload(convertedBlob, convertedFilename)
 
       if (saveStatus === 'created') {

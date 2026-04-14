@@ -1,10 +1,10 @@
 # Deployment Guide
 
-This guide covers deploying the APIIngest application to Koyeb.
+This guide covers deploying the API Ingest application to Koyeb.
 
 ## Overview
 
-APIIngest is a full-stack application with:
+API Ingest is a full-stack application with:
 - **Backend**: FastAPI (Python) server on port 8000
 - **Frontend**: Next.js application on port 3000
 
@@ -15,7 +15,7 @@ The application is deployed as a **single container** on Koyeb, with both servic
 - Koyeb account (sign up at https://www.koyeb.com/)
 - GitHub repository with your code
 - Git repository connected to Koyeb
-- PostgreSQL database (Supabase recommended - see KOYEB_PERSISTENT_DB.md)
+- PostgreSQL database (Supabase recommended - see `backend/README_DATABASE.md`)
 
 ## Architecture on Koyeb
 
@@ -93,7 +93,7 @@ CONVERSION_MAX_QUEUE=20
 2. Click **Create Service**
 3. Select your GitHub repository
 4. Configure the service:
-   - **Name**: `apiingest` (or your preferred name)
+   - **Name**: `api-ingest` (or your preferred name)
    - **Builder**: Docker
    - **Dockerfile**: Use root `Dockerfile`
    - **Port**: 8000 (backend port - publicly exposed)
@@ -112,8 +112,8 @@ curl -fsSL https://cli.koyeb.com/install.sh | bash
 koyeb login
 
 # Deploy
-koyeb service create apiingest \
-  --git github.com/yourusername/apic \
+koyeb service create api-ingest \
+  --git github.com/yourusername/api-ingest \
   --git-branch main \
   --docker-dockerfile Dockerfile \
   --ports 8000:http \
@@ -320,7 +320,7 @@ Monitor in Koyeb dashboard:
 - **DO NOT use SQLite in production** (container filesystem is ephemeral)
 - PostgreSQL connection pooling is handled automatically
 - Database schema is created automatically on first run
-- See `KOYEB_PERSISTENT_DB.md` for detailed database setup
+- See `backend/README_DATABASE.md` for detailed database setup
 
 ## MCP Server
 
@@ -346,7 +346,7 @@ Add to your project or global `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "APIIngest": {
+    "API-Ingest": {
       "url": "https://your-app.koyeb.app:8080/",
       "headers": {
         "Authorization": "Bearer your-secret-token"
@@ -359,7 +359,7 @@ Add to your project or global `.cursor/mcp.json`:
 ### Connecting Claude Code
 
 ```bash
-claude mcp add --transport http APIIngest https://your-app.koyeb.app:8080/ \
+claude mcp add --transport http API-Ingest https://your-app.koyeb.app:8080/ \
   --header "Authorization: Bearer your-secret-token"
 ```
 
@@ -642,14 +642,14 @@ After deploying, verify:
 
 ### Getting Help
 
-- **Project Issues**: [GitHub Issues](https://github.com/mohidbt/apic/issues)
+- **Project Issues**: [GitHub Issues](https://github.com/mohidbt/api-ingest/issues)
 - **Koyeb Support**: https://www.koyeb.com/support
 - **Koyeb Community**: Koyeb Discord/Slack
 
 ### Related Documentation
 
-- `KOYEB_PERSISTENT_DB.md` - Detailed database setup with Supabase
-- `PROJECT_STATUS.md` - Current project status and features
+- `backend/README_DATABASE.md` - Detailed database setup with Supabase
+- `QUICKSTART.md` - Local setup and run commands
 - `README.md` - Project overview and local development setup
 
 ## Deployment Architecture Summary

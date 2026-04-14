@@ -61,8 +61,13 @@ GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
 SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me-in-production")
 SESSION_MAX_AGE = int(os.getenv("SESSION_MAX_AGE", "86400"))  # 24h
 
-ADMIN_GITHUB_LOGINS = {"mohidbt"}
-ADMIN_EMAILS = {"mohidfbutt@gmail.com"}
+def _parse_admin_identities(env_name: str) -> set[str]:
+    raw = os.getenv(env_name, "")
+    return {value.strip().lower() for value in raw.split(",") if value.strip()}
+
+
+ADMIN_GITHUB_LOGINS = _parse_admin_identities("ADMIN_GITHUB_LOGINS")
+ADMIN_EMAILS = _parse_admin_identities("ADMIN_EMAILS")
 
 ALLOWED_EXTENSIONS = [".yaml", ".yml", ".json", ".raml", ".apib", ".wsdl", ".graphql", ".gql"]
 FORMAT_MAP = {
@@ -495,7 +500,7 @@ async def get_github_stats():
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                "https://api.github.com/repos/mohidbt/apic",
+                "https://api.github.com/repos/mohidbt/api-ingest",
                 timeout=5.0,
                 headers={"Accept": "application/vnd.github.v3+json"}
             )

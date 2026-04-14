@@ -129,7 +129,7 @@ export default function TokensPage() {
   const mcpConfigJson = JSON.stringify(
     {
       mcpServers: {
-        APIIngest: {
+        "API Ingest": {
           url: mcpUrl,
           headers: {
             Authorization: `Bearer ${rawToken ?? '<PASTE_MCP_TOKEN_HERE>'}`,

@@ -4,9 +4,9 @@
 
 > *"AGGH 400, not again"*
 
-Friday night. You finally have a peaceful moment to code your dream project — a cornflakes restock alert machine. You spin up Claude Code, the frontend looks great, but then your agent hits the Costco API and just... can't. 400 Bad requests everywhere. You tell it to read the docs online. It scrapes 5 of 20 pages, and enters a confident hallucination loop.
+Friday night. You finally have a peaceful moment to code your dream project — a cornflakes restock alert machine. You spin up Claude Code, the frontend looks great, but then your agent hits the Costco API and fails. 400 Bad requests everywhere. You tell it to read the docs online. It scrapes 5 of 20 pages, then enters a confident hallucination loop.
 
-API endpoint hallucination is one of the most common failure modes when building applications with agents. And the existing workarounds kinda suck:
+API endpoint hallucination is one of the most common failures when building API-based software with agents. And the existing workarounds kinda suck:
 
 |  | Manual Spec Upload | Agent Web Search | Context7 | **API Ingest** |
 |---|---|---|---|---|
@@ -33,7 +33,7 @@ Available as MCP server, web UI, or CLI.
 **Claude Code:**
 
 ```bash
-claude mcp add --transport http APIIngest https://api-ingest.com/mcp \
+claude mcp add --transport http API-Ingest https://api-ingest.com/mcp \
   --header "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -42,7 +42,7 @@ claude mcp add --transport http APIIngest https://api-ingest.com/mcp \
 ```json
 {
   "mcpServers": {
-    "APIIngest": {
+    "API-Ingest": {
       "url": "https://api-ingest.com/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_TOKEN"
@@ -128,13 +128,21 @@ Inspired by [Gitingest](https://gitingest.com/)'s LLM-efficient formatting.
 
 ---
 
+### Documentation
+
+- [Quickstart](QUICKSTART.md) - get backend + frontend running quickly
+- [Setup](docs/SETUP.md) - full local development setup
+- [Deployment](docs/DEPLOYMENT.md) - production deployment guidance
+
+---
+
 ### Contributing
 
 Contributions welcome. 
 
 ```bash
-git clone https://github.com/mohidbt/apic.git
-cd apic/backend
+git clone https://github.com/mohidbt/api-ingest.git
+cd api-ingest/backend
 pip install -r requirements.txt
 pytest tests/ -v
 ```

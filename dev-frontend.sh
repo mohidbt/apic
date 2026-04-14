@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🚀 Starting APIIngest Frontend..."
+echo "🚀 Starting API Ingest Frontend..."
 echo ""
 
 cd frontend

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MCP Server for APIIngest.
+MCP Server for API Ingest.
 
 Exposes stored API specs as discoverable MCP resources and tools,
 implementing the progressive-disclosure pattern:
@@ -50,7 +50,7 @@ _MAX_CACHE_SIZE = 32
 MCP_TOKEN_THRESHOLD = int(os.getenv("MCP_TOKEN_THRESHOLD", "4000"))
 
 mcp = FastMCP(
-    "APIIngest",
+    "API Ingest",
     stateless_http=True,
     json_response=True,
     streamable_http_path="/",
