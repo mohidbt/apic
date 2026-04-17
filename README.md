@@ -67,7 +67,7 @@ Get the token from api-ingest.com
 **How agents use it:**
 
 1. `convert_spec` (local file) or `search_specs` → `load_spec` (marketplace)
-2. Check `token_count` — if small, use `full_markdown` directly
+2. Check `token_count` against `token_threshold` (default **4000 tokens**) — if small, use `full_markdown` directly
 3. If large — read the manifest, then `get_chunk` for only the endpoints needed
 
 Each chunk includes its own base URL, auth, params, schemas, and a curl example — so it stands alone without the rest of the spec.
