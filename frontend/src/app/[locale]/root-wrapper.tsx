@@ -18,7 +18,7 @@ export const RootWrapper = ({
   //   useScan({ enabled: process.env.NODE_ENV === 'development' })
   return (
     <>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
         <NextIntlClientProvider locale={locale}>
           <AuthProvider>{children}</AuthProvider>
         </NextIntlClientProvider>
