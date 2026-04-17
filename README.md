@@ -1,10 +1,10 @@
 # API Ingest - Let Agents work with boring APIs 
 
-**Handy tool** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into structured, LLM-friendly markdown optimized for codegen agents. 
+**Handy MCP** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into LLM-friendly markdown structures; focus on token-efficiency and precision. 
 
 > *"AGGH 400, not again"*
 
-Friday night. You finally have a peaceful moment to code your dream project — a cornflakes restock alert machine. You spin up Claude Code, the frontend looks great, but then your agent hits the Costco API and fails. 400 Bad requests everywhere. You tell it to read the docs online. It scrapes 5 of 20 pages, then enters a confident hallucination loop.
+Friday night. You finally have a peaceful moment to code your dream project: a cornflakes restock alert machine. You spin up Claude Code, the frontend looks great, but then your agent hits the Costco API and fails. 400 Bad requests everywhere. You tell it to read the docs online. It scrapes 5 of 20 pages, then enters a confident hallucination loop.
 
 API endpoint hallucination is one of the most common failures when building API-based software with agents. And the existing workarounds kinda suck:
 
@@ -52,6 +52,18 @@ claude mcp add --transport http API-Ingest https://api-ingest.com/mcp \
 }
 ```
 Get the token from api-ingest.com
+
+---
+
+**Real Example: Semantic Scholar API - Context7 vs API Ingest**
+This case is not about token-efficiency, its about actual effectiveness.
+Claude is unable to understand the use cases for Semantic Scholar Graph APIs via Context7 query. And then starts a super fuzzy web search. 
+
+<img width="948" height="648" alt="Bildschirmfoto 2026-04-17 um 11 25 21" src="https://github.com/user-attachments/assets/ecf8fe9d-c4e1-4eed-99d7-6a0974a708a0" />
+
+In contrast, if I ask to use our MCP as a follow-up, Claude is able to get 1) holistic context and 2) detailed view into selected endpoints. 
+
+<img width="1089" height="673" alt="Bildschirmfoto 2026-04-17 um 11 29 04" src="https://github.com/user-attachments/assets/03c79e8a-9988-4b02-ac52-f2e139c398d7" />
 
 ---
 
