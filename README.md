@@ -27,7 +27,7 @@ Available as MCP server, web UI, or CLI.
 
 
 <p align="center">
-  <img src="assets/header.jpg" alt="API Ingest" width="600" />
+  <img src="assets/squidward_meme.jpg" alt="API Ingest" width="600" />
 </p>
 
 ---
