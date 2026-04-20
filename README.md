@@ -60,8 +60,7 @@ claude mcp add --transport http API-Ingest https://api-ingest.com/mcp \
 Get the token from api-ingest.com
 
 ---
-
-**Real Example: Semantic Scholar API - Context7 vs API Ingest**
+### Opus 4.7 Example: Semantic Scholar API - Context7 vs API Ingest
 This case is not about token-efficiency, its about actual effectiveness.
 Claude is unable to understand the use cases for Semantic Scholar Graph APIs via Context7 query. And then starts a super fuzzy web search. 
 
