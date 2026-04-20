@@ -1,5 +1,13 @@
 # API Ingest - Let Agents work with boring APIs 
 
+[![Version](https://img.shields.io/badge/version-1.0.0-2ea44f)](CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](backend/requirements.txt)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](backend/)
+[![Next.js](https://img.shields.io/badge/Next.js-Frontend-000000?logo=next.js&logoColor=white)](frontend/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
+[![MCP](https://img.shields.io/badge/MCP-compatible-7c3aed)](#connect-to-mcp-server)
+
 **Handy MCP** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into LLM-friendly markdown structures; focus on token-efficiency and precision. 
 
 > *"AGGH 400, not again"*
