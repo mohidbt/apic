@@ -27,7 +27,9 @@ Available as MCP server, web UI, or CLI.
 
 
 <p align="center">
-  <img src="assets/squidward_meme.jpg" alt="API Ingest" width="600" />
+  <a href="https://imgflip.com/i/apomea">
+    <img src="assets/squidward_meme.jpg" alt="Context Matters" width="600" />
+  </a>
 </p>
 
 ---
