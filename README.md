@@ -4,7 +4,7 @@
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
 
 
-**Handy MCP** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into LLM-friendly markdown structures; focus on token-efficiency and precision. 
+**Handy MCP** that converts API specs (OpenAPI YAML/JSON, RAML, WSDL, GraphQL, API Blueprint) into LLM-friendly markdown structures; focusing on token-efficiency and precision. 
 
 > *"AGGH 400, not again"*
 
