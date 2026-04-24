@@ -23,7 +23,7 @@ API endpoint hallucination is one of the most common failures when building API-
 **API Ingest** takes OpenAPI specs and deterministically transforms them into LLM-optimized, chunked markdown — so your agent gets exactly the endpoint it needs, with auth, params, schemas, and curl examples baked in. 
 Available as MCP server, web UI, or CLI.
 
-> *YES! This tool should die the day every API provider outside of big tech offers LLM-friendly docs, ([e.g. via this](https://gitbook.com/docs/publishing-documentation/mcp-servers-for-published-docs)). But let's be honest — that's gonna take a while. Until then, happy ingesting 💉.*
+> *YES! This tool should die the day every API provider outside of big tech offers LLM-friendly docs, ([e.g. via this](https://gitbook.com/docs/publishing-documentation/mcp-servers-for-published-docs)). But let's be honest - it will take some years (happy greetings from COBOL). Until then, happy ingesting 💉.*
 
 
 <p align="center">
